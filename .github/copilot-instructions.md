@@ -26,6 +26,7 @@
 | `meeting-insights-analyzer` | Analyzes meeting transcripts and recordings to uncover behavioral patterns, communication insights,  |
 | `principal-engineer` | Brutally honest Principal Engineer. Gates every change on ROI, scalability, licensing, and security. |
 | `principal-uefi-engineer` | Principal UEFI/firmware engineer for EDK II projects across x86 and ARM. Use when designing, reviewi |
+| `sustainability-insights-agent` | Turns a user's computed carbon footprint into empathetic, motivating sustainability insights with re |
 | `test-quality-evaluator` | Testing and evaluation specialist — runs pytest, designs unit/integration/ regression tests, and sco |
 | `theme-factory` | Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML la |
 | `twitter-algorithm-optimizer` | Analyze and rewrite tweets/X posts for reach and engagement using a clean-room model of publicly doc |
