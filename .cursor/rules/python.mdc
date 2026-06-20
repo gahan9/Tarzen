@@ -1,0 +1,7 @@
+---
+description: Project rule — python
+globs:
+alwaysApply: true
+---
+
+Follow the rule defined in `.ai/rules/python.md`.

@@ -1,0 +1,7 @@
+---
+description: Project rule — security
+globs:
+alwaysApply: true
+---
+
+Follow the rule defined in `.ai/rules/security.md`.

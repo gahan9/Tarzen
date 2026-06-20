@@ -1,0 +1,7 @@
+---
+description: Project rule — testing
+globs:
+alwaysApply: true
+---
+
+Follow the rule defined in `.ai/rules/testing.md`.

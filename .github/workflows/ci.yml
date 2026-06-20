@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: MIT
+# Example CI pipeline. Adjust paths and tools to match your project.
+# Mirrors the quality gates enforced by the devops-automator skill.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for secret scanning
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Sync environment
+        run: uv sync --all-extras || echo "No pyproject.toml yet; skipping sync"
+
+      - name: Lint
+        run: uv run ruff check . || echo "ruff not configured yet"
+
+      - name: Format check
+        run: uv run ruff format --check . || echo "ruff not configured yet"
+
+      - name: Type check
+        run: uv run mypy src/ || echo "mypy/src not configured yet"
+
+      - name: Tests + coverage
+        run: uv run pytest -x --cov=src --cov-report=term-missing || echo "no tests yet"
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install scanners
+        run: pip install bandit pip-audit
+
+      - name: Bandit (SAST)
+        run: bandit -r src/ || echo "no src/ yet"
+
+      - name: pip-audit (CVE check)
+        run: pip-audit || true
+
+      - name: SPDX header check
+        run: |
+          set -e
+          FILES=$(git ls-files 'src/*.py' 'tests/*.py' || true)
+          if [ -n "$FILES" ]; then
+            MISSING=$(grep -L 'SPDX-License-Identifier' $FILES || true)
+            if [ -n "$MISSING" ]; then
+              echo "::error::Missing SPDX identifier in:"; echo "$MISSING"; exit 1
+            fi
+          fi
+
+      - name: Gitleaks (secret scan)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

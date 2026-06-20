@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeReadFile": [
+      {
+        "command": "uv run python -u .ai/hooks/run-hook.py guard-env-files"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "uv run python -u .ai/hooks/run-hook.py ensure-uv-env"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "uv run python -u .ai/hooks/run-hook.py post-test-review"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "uv run python -u .ai/hooks/run-hook.py lint-changed-files"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "uv run python -u .ai/hooks/run-hook.py pre-agentic-estimate"
+      }
+    ]
+  }
+}

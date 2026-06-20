@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -u .ai/hooks/run-hook.py pre-agentic-estimate"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -u .ai/hooks/run-hook.py guard-env-files"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -u .ai/hooks/run-hook.py ensure-uv-env"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -u .ai/hooks/run-hook.py post-test-review"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -u .ai/hooks/run-hook.py lint-changed-files"
+          }
+        ]
+      }
+    ]
+  }
+}

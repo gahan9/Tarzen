@@ -1,0 +1,44 @@
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.yaml
+secrets.yml
+token.txt
+service-account*.json
+
+# Cloud auth
+.vault-token
+.aws/credentials
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Hook session flag
+.ai/.pre-agentic-ran
+
+# Cursor skill links (regenerate with setup-links.py)
+.cursor/skills/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

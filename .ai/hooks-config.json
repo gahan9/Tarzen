@@ -1,0 +1,25 @@
+{
+  "$comment": "Token-saving knobs for Cursor + Claude Code hooks. See .ai/AGENTS.md and README.md.",
+  "budget": {
+    "maxSingleRequestUsd": 5.0,
+    "approvalTimeoutSec": 20,
+    "autoApproveBelow": 1.0,
+    "defaultModel": "sonnet",
+    "billingMode": "auto",
+    "outputInputRatio": 1.5,
+    "showEstimate": true
+  },
+  "review": {
+    "mode": "security-legal",
+    "verbosity": "terse",
+    "reasoningHint": "minimal",
+    "askBeforeProceeding": true,
+    "maxIssues": 5
+  },
+  "lint": {
+    "enabled": true,
+    "verbosity": "terse",
+    "reasoningHint": "minimal",
+    "maxIssues": 5
+  }
+}

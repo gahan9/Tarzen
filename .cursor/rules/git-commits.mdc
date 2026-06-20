@@ -1,0 +1,7 @@
+---
+description: Project rule — git-commits
+globs:
+alwaysApply: true
+---
+
+Follow the rule defined in `.ai/rules/git-commits.md`.

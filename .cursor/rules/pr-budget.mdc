@@ -1,0 +1,7 @@
+---
+description: Project rule — pr-budget
+globs:
+alwaysApply: true
+---
+
+Follow the rule defined in `.ai/rules/pr-budget.md`.
