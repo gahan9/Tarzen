@@ -42,3 +42,11 @@ htmlcov/
 Thumbs.db
 .idea/
 *.swp
+
+# Node / web
+node_modules/
+dist/
+dist-ssr/
+*.local
+.expo/
+web-build/
