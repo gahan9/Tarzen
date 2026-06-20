@@ -63,7 +63,9 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-addopts = "-q"
+# Coverage runs on every invocation so the gate below is enforced locally and
+# in CI from a bare `pytest`, matching how the pipeline runs the suite.
+addopts = "-q --cov=carbon --cov-report=term-missing"
 markers = [
     "integration: integration tests requiring external credentials (auto-skipped)",
 ]
@@ -71,3 +73,9 @@ markers = [
 [tool.coverage.run]
 source = ["carbon"]
 branch = true
+
+[tool.coverage.report]
+# Fail the suite below this line-and-branch coverage threshold. Held at 90% to
+# match the strongest comparable implementation and prevent silent erosion.
+fail_under = 90
+show_missing = true
