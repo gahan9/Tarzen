@@ -1,0 +1,34 @@
+{
+  "version": "2024.1",
+  "unit": "kg_co2e_per_km",
+  "source": "UK DEFRA/DESNZ Greenhouse gas reporting conversion factors 2024 (public, Open Government Licence v3.0)",
+  "notes": "Public emission factors. Per-dataset license recorded in docs/data-sources.md and attributed in THIRD_PARTY_NOTICES.md. No GPL/AGPL/SSPL data.",
+  "domains": {
+    "transport": {
+      "car": {
+        "factor": 0.1707,
+        "basis": "vehicle_km",
+        "shared_by_passengers": true,
+        "label": "Car"
+      },
+      "bus": {
+        "factor": 0.10227,
+        "basis": "passenger_km",
+        "shared_by_passengers": false,
+        "label": "Bus"
+      },
+      "rail": {
+        "factor": 0.03549,
+        "basis": "passenger_km",
+        "shared_by_passengers": false,
+        "label": "Rail"
+      },
+      "flight": {
+        "factor": 0.15102,
+        "basis": "passenger_km",
+        "shared_by_passengers": false,
+        "label": "Flight"
+      }
+    }
+  }
+}

@@ -1,0 +1,323 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Carbon Footprint Platform API",
+    "description": "Deterministic footprint engine with policy-gated insights.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Healthz",
+        "description": "Liveness probe: the process is up and serving.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Healthz Healthz Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readyz",
+        "description": "Readiness probe: dependencies are reachable.\n\nReturns 200 when all checks pass, otherwise 503 with per-check detail.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Readyz Readyz Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/footprint": {
+      "post": {
+        "tags": [
+          "footprint"
+        ],
+        "summary": "Create Footprint",
+        "description": "Compute a footprint and an accompanying sustainability insight.",
+        "operationId": "create_footprint_api_footprint_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FootprintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FootprintResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BreakdownItem": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kg_co2e": {
+            "type": "number",
+            "title": "Kg Co2E"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "kg_co2e"
+        ],
+        "title": "BreakdownItem",
+        "description": "A labelled contribution to the footprint total."
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorDetail",
+        "description": "Machine-readable error detail carried inside the envelope."
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEnvelope",
+        "description": "Top-level error envelope returned for every failed request."
+      },
+      "FootprintRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Domain",
+            "examples": [
+              "transport"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "car",
+              "bus",
+              "rail",
+              "flight"
+            ],
+            "title": "Mode",
+            "examples": [
+              "car"
+            ]
+          },
+          "distance_km": {
+            "type": "number",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "examples": [
+              42.0
+            ]
+          },
+          "passengers": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Passengers",
+            "default": 1,
+            "examples": [
+              1
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domain",
+          "mode",
+          "distance_km"
+        ],
+        "title": "FootprintRequest",
+        "description": "Request body for a footprint calculation."
+      },
+      "FootprintResponse": {
+        "properties": {
+          "kg_co2e": {
+            "type": "number",
+            "title": "Kg Co2E"
+          },
+          "breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/BreakdownItem"
+            },
+            "type": "array",
+            "title": "Breakdown"
+          },
+          "insight": {
+            "$ref": "#/components/schemas/Insight"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kg_co2e",
+          "breakdown",
+          "insight",
+          "request_id"
+        ],
+        "title": "FootprintResponse",
+        "description": "Successful response for a footprint calculation."
+      },
+      "Insight": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "benchmark": {
+            "type": "string",
+            "title": "Benchmark"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "needs_context": {
+            "type": "boolean",
+            "title": "Needs Context"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "benchmark",
+          "actions",
+          "needs_context",
+          "llm_used"
+        ],
+        "title": "Insight",
+        "description": "Human-friendly framing of a footprint result."
+      }
+    }
+  }
+}
