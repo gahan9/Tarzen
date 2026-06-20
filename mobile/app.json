@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Carbon Footprint",
+    "slug": "carbon-footprint",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f6b46"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f6b46"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
