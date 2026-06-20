@@ -32,6 +32,24 @@ _LOGGER = logging.getLogger(__name__)
 router = APIRouter(tags=["footprint"])
 
 
+def _primary_quantity(request: FootprintRequest) -> float | None:
+    """Return the single activity magnitude supplied for the request's domain.
+
+    Exactly one quantity field is populated per request; this collapses them to
+    the figure the insight engine frames (e.g. distance for transport, kWh for
+    energy).
+    """
+    if request.distance_km is not None:
+        return request.distance_km
+    if request.kwh is not None:
+        return request.kwh
+    if request.servings is not None:
+        return float(request.servings)
+    if request.spend is not None:
+        return request.spend
+    return request.waste_kg
+
+
 async def _log_footprint(
     store: FootprintLogStore | None,
     *,
@@ -107,13 +125,8 @@ async def create_footprint(
     request_id = str(getattr(request.state, "request_id", "unknown"))
 
     tracker = deps.registry.get(payload.domain)
-    result = tracker.compute(
-        {
-            "mode": payload.mode,
-            "distance_km": payload.distance_km,
-            "passengers": payload.passengers,
-        }
-    )
+    params = payload.model_dump(exclude_none=True, exclude={"domain"})
+    result = tracker.compute(params)
 
     engine: InsightEngine = deps.insight_engine
     insight = await engine.generate(
@@ -122,6 +135,7 @@ async def create_footprint(
             mode=payload.mode,
             distance_km=payload.distance_km,
             passengers=payload.passengers,
+            quantity=_primary_quantity(payload),
         )
     )
     request.state.llm_used = insight.llm_used

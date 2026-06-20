@@ -1,8 +1,15 @@
 {
-  "version": "2024.1",
-  "unit": "kg_co2e_per_km",
-  "source": "UK DEFRA/DESNZ Greenhouse gas reporting conversion factors 2024 (public, Open Government Licence v3.0)",
-  "notes": "Public emission factors. Per-dataset license recorded in docs/data-sources.md and attributed in THIRD_PARTY_NOTICES.md. No GPL/AGPL/SSPL data.",
+  "version": "2024.2",
+  "unit": "kg_co2e_per_activity_unit",
+  "source": "Public emission factors: UK DEFRA/DESNZ 2024 GHG conversion factors (Open Government Licence v3.0); Poore & Nemecek (2018) via Our World in Data (CC BY 4.0).",
+  "notes": "Each domain uses its own activity unit (see per-mode 'basis'). transport=per km, energy=per kWh, food=per meal/serving, shopping=per GBP spend, waste=per kg. Per-dataset license recorded in docs/data-sources.md and attributed in THIRD_PARTY_NOTICES.md. No GPL/AGPL/SSPL data.",
+  "sources": {
+    "transport": "UK DEFRA/DESNZ Greenhouse gas reporting conversion factors 2024 (OGL v3.0).",
+    "energy": "UK DEFRA/DESNZ Greenhouse gas reporting conversion factors 2024 — UK electricity generation and natural gas (gross CV), kg CO2e per kWh (OGL v3.0).",
+    "food": "Poore, J. & Nemecek, T. (2018), Science 360(6392) via Our World in Data (CC BY 4.0) — representative kg CO2e per meal serving by category.",
+    "shopping": "Spend-based environmentally-extended input-output (EEIO) factors, order-of-magnitude, derived from UK DEFRA/ONS environmental accounts (OGL v3.0); kg CO2e per GBP.",
+    "waste": "UK DEFRA/DESNZ Greenhouse gas reporting conversion factors 2024 — waste disposal (landfill/recycling/composting), kg CO2e per kg (OGL v3.0)."
+  },
   "domains": {
     "transport": {
       "car": {
@@ -28,6 +35,104 @@
         "basis": "passenger_km",
         "shared_by_passengers": false,
         "label": "Flight"
+      }
+    },
+    "energy": {
+      "electricity": {
+        "factor": 0.2071,
+        "basis": "kwh",
+        "shared_by_passengers": false,
+        "label": "Grid electricity"
+      },
+      "natural_gas": {
+        "factor": 0.18293,
+        "basis": "kwh",
+        "shared_by_passengers": false,
+        "label": "Natural gas"
+      }
+    },
+    "food": {
+      "beef_meal": {
+        "factor": 6.0,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Beef meal"
+      },
+      "pork_meal": {
+        "factor": 1.7,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Pork meal"
+      },
+      "chicken_meal": {
+        "factor": 1.2,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Chicken meal"
+      },
+      "fish_meal": {
+        "factor": 1.3,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Fish meal"
+      },
+      "vegetarian_meal": {
+        "factor": 0.5,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Vegetarian meal"
+      },
+      "vegan_meal": {
+        "factor": 0.4,
+        "basis": "meal",
+        "shared_by_passengers": false,
+        "label": "Vegan meal"
+      }
+    },
+    "shopping": {
+      "clothing": {
+        "factor": 0.5,
+        "basis": "gbp_spend",
+        "shared_by_passengers": false,
+        "label": "Clothing & textiles"
+      },
+      "electronics": {
+        "factor": 0.3,
+        "basis": "gbp_spend",
+        "shared_by_passengers": false,
+        "label": "Electronics"
+      },
+      "furniture": {
+        "factor": 0.45,
+        "basis": "gbp_spend",
+        "shared_by_passengers": false,
+        "label": "Furniture"
+      },
+      "general_goods": {
+        "factor": 0.4,
+        "basis": "gbp_spend",
+        "shared_by_passengers": false,
+        "label": "General goods"
+      }
+    },
+    "waste": {
+      "landfill": {
+        "factor": 0.4467,
+        "basis": "kg",
+        "shared_by_passengers": false,
+        "label": "Landfill waste"
+      },
+      "recycling": {
+        "factor": 0.0211,
+        "basis": "kg",
+        "shared_by_passengers": false,
+        "label": "Recycled waste"
+      },
+      "composting": {
+        "factor": 0.0089,
+        "basis": "kg",
+        "shared_by_passengers": false,
+        "label": "Composted waste"
       }
     }
   }

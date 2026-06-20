@@ -52,11 +52,31 @@ def test_footprint_validation_error_envelope(client: TestClient) -> None:
 
 def test_footprint_unsupported_domain_envelope(client: TestClient) -> None:
     """An unregistered domain returns the 404 unsupported_domain envelope."""
-    body = {"domain": "energy", "mode": "car", "distance_km": 10.0}
+    body = {"domain": "space_travel", "mode": "car", "distance_km": 10.0}
     resp = client.post("/api/footprint", json=body, headers=_AUTH)
 
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "unsupported_domain"
+
+
+def test_footprint_energy_domain_succeeds(client: TestClient) -> None:
+    """A registered roadmap domain (energy) computes end-to-end."""
+    body = {"domain": "energy", "mode": "electricity", "kwh": 100.0}
+    resp = client.post("/api/footprint", json=body, headers=_AUTH)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["kg_co2e"] == 20.71  # 0.2071 * 100
+    assert data["insight"]["needs_context"] is False
+
+
+def test_footprint_food_domain_succeeds(client: TestClient) -> None:
+    """The food domain accepts servings and returns a deterministic total."""
+    body = {"domain": "food", "mode": "beef_meal", "servings": 2}
+    resp = client.post("/api/footprint", json=body, headers=_AUTH)
+
+    assert resp.status_code == 200
+    assert resp.json()["kg_co2e"] == 12.0  # 6.0 * 2
 
 
 def test_footprint_side_effects_are_invoked() -> None:

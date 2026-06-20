@@ -38,6 +38,26 @@ _ACTIONS: dict[str, tuple[str, ...]] = {
         "Carpool or combine errands so one trip does the work of several.",
         "For a longer journey, consider rail in place of a short flight.",
     ),
+    "energy": (
+        "Lower the thermostat a degree and draught-proof doors and windows.",
+        "Switch to LED bulbs and turn off standby power at the wall.",
+        "If available, move to a renewable electricity tariff.",
+    ),
+    "food": (
+        "Swap one red-meat meal a week for chicken, fish, or plant-based.",
+        "Plan portions to cut food waste — it is emissions you never use.",
+        "Favour seasonal, local produce where you can.",
+    ),
+    "shopping": (
+        "Buy fewer, more durable items and repair before replacing.",
+        "Choose second-hand or refurbished for electronics and furniture.",
+        "Skip rushed shipping; consolidate orders to cut delivery trips.",
+    ),
+    "waste": (
+        "Separate recyclables properly so they avoid landfill.",
+        "Compost food scraps to cut methane from landfill.",
+        "Reduce single-use packaging at the source.",
+    ),
 }
 
 _SYSTEM_PROMPT = (
@@ -60,15 +80,19 @@ class InsightInput:
 
     Attributes:
         result: The deterministic footprint result (source of all numbers).
-        mode: The transport mode logged.
-        distance_km: The distance logged; ``0`` triggers ask-for-context.
+        mode: The activity mode logged.
+        distance_km: Distance logged for transport; ``None`` for other domains.
         passengers: Passenger count for the activity.
+        quantity: The domain's primary activity magnitude (distance for
+            transport, kWh for energy, etc.); a non-positive value triggers
+            ask-for-context.
     """
 
     result: FootprintResult
     mode: str
-    distance_km: float
+    distance_km: float | None = None
     passengers: int = 1
+    quantity: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,15 +170,24 @@ class InsightEngine:
     @staticmethod
     def _needs_context(data: InsightInput) -> bool:
         """Return ``True`` when inputs are too thin to advise on."""
-        return data.distance_km <= 0
+        return _magnitude(data) <= 0
+
+
+def _magnitude(data: InsightInput) -> float:
+    """Resolve the primary activity magnitude across domains."""
+    if data.distance_km is not None:
+        return data.distance_km
+    if data.quantity is not None:
+        return data.quantity
+    return 0.0
 
 
 def _ask_for_context(data: InsightInput) -> InsightResult:
     """Build a clarifying ask when required input is missing/implausible."""
     return InsightResult(
         message=(
-            "To estimate this trip's footprint I need the distance. "
-            "About how many kilometres was it?"
+            "To estimate this activity's footprint I need a bit more detail "
+            "about the amount involved. Could you share it?"
         ),
         benchmark="",
         actions=[],
@@ -171,8 +204,8 @@ def _deterministic_template(
     """Build the fallback insight purely from engine numbers."""
     kg = data.result.kg_co2e
     message = (
-        f"This {data.mode} trip adds about {kg:g} kg CO2e to your footprint. "
-        "Small swaps add up — here are a few easy wins."
+        f"This {data.mode} activity adds about {kg:g} kg CO2e to your "
+        "footprint. Small swaps add up — here are a few easy wins."
     )
     benchmark_sentence = (
         f"That's {benchmark.sentence}." if benchmark is not None else ""
@@ -196,7 +229,7 @@ def _build_user_prompt(
         "fixed_facts": {
             "mode": data.mode,
             "kg_co2e": data.result.kg_co2e,
-            "distance_km": data.distance_km,
+            "quantity": _magnitude(data),
             "passengers": data.passengers,
             "benchmark_sentence": benchmark.sentence if benchmark else "",
         },
@@ -215,7 +248,7 @@ def _allowed_numbers(
     """Collect every number the LLM is permitted to echo."""
     allowed: set[float] = {
         float(data.result.kg_co2e),
-        float(data.distance_km),
+        float(_magnitude(data)),
         float(data.passengers),
     }
     for item in data.result.breakdown:

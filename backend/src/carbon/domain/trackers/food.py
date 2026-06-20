@@ -1,27 +1,49 @@
 # SPDX-License-Identifier: MIT
-"""Food domain tracker (roadmap stub, Phase 6).
+"""Food domain tracker — diet/meal categories by servings.
 
-TODO(phase-6): Implement diet/meal-category footprint using versioned per-meal
-emission factors.
+Deterministic and pure: emissions are a versioned per-meal emission factor
+(kg CO2e per serving) multiplied by the number of servings. Categories range
+from beef to vegan, ordered by typical intensity.
 """
 
 from __future__ import annotations
 
 from typing import ClassVar
 
+from carbon.domain.factors import FactorCatalogue, get_factor_catalogue
 from carbon.domain.models import FootprintResult
 from carbon.domain.ports import TrackerParams
+from carbon.domain.trackers.scalar import compute_scalar
 
 
 class FoodTracker:
-    """Placeholder food tracker implementing the DomainTracker port."""
+    """Deterministic food emissions calculator (meal-serving based)."""
 
     domain: ClassVar[str] = "food"
 
+    def __init__(self, catalogue: FactorCatalogue | None = None) -> None:
+        """Initialise with an optional explicit factor catalogue (for tests)."""
+        self._catalogue = catalogue or get_factor_catalogue()
+
     def compute(self, params: TrackerParams) -> FootprintResult:
-        """Not yet implemented.
+        """Compute a food footprint from ``mode`` and ``servings``.
+
+        Args:
+            params: Mapping with ``mode`` (e.g. ``beef_meal``) and ``servings``
+                (non-negative integer count of meals).
+
+        Returns:
+            The deterministic footprint for the meals.
 
         Raises:
-            NotImplementedError: Always, until Phase 6 lands.
+            InvalidInputError: If parameters are missing or malformed.
+            UnsupportedModeError: If ``mode`` has no registered factor.
         """
-        raise NotImplementedError("food tracker is a Phase 6 roadmap item")
+        return compute_scalar(
+            domain=self.domain,
+            params=params,
+            quantity_key="servings",
+            unit="servings",
+            catalogue=self._catalogue,
+            require_int=True,
+        )

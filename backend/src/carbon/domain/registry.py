@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from carbon.domain.errors import UnsupportedDomainError
 from carbon.domain.ports import DomainTracker
+from carbon.domain.trackers.energy import EnergyTracker
+from carbon.domain.trackers.food import FoodTracker
+from carbon.domain.trackers.shopping import ShoppingTracker
+from carbon.domain.trackers.waste import WasteTracker
 from carbon.domain.transport import TransportTracker
 
 
@@ -36,9 +40,16 @@ class TrackerRegistry:
 
 
 def build_default_registry() -> TrackerRegistry:
-    """Build the registry of trackers active in the MVP.
+    """Build the registry of active domain trackers.
 
-    Roadmap trackers (energy/food/shopping/waste) exist as stubs but are not
-    registered until implemented, so requests for them fail cleanly.
+    Adding a domain means implementing a :class:`DomainTracker` and listing it
+    here — the API, schema-routing, and application layers need no other edits.
     """
-    return TrackerRegistry({TransportTracker.domain: TransportTracker()})
+    trackers: tuple[DomainTracker, ...] = (
+        TransportTracker(),
+        EnergyTracker(),
+        FoodTracker(),
+        ShoppingTracker(),
+        WasteTracker(),
+    )
+    return TrackerRegistry({tracker.domain: tracker for tracker in trackers})

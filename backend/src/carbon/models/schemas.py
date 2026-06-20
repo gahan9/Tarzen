@@ -13,23 +13,54 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 TransportMode = Literal["car", "bus", "rail", "flight"]
+EnergyMode = Literal["electricity", "natural_gas"]
+FoodMode = Literal[
+    "beef_meal",
+    "pork_meal",
+    "chicken_meal",
+    "fish_meal",
+    "vegetarian_meal",
+    "vegan_meal",
+]
+ShoppingMode = Literal["clothing", "electronics", "furniture", "general_goods"]
+WasteMode = Literal["landfill", "recycling", "composting"]
+# Closed union of every supported activity mode; unknown modes are rejected at
+# the boundary. New domains extend this union — the domain core is untouched.
+FootprintMode = TransportMode | EnergyMode | FoodMode | ShoppingMode | WasteMode
 
-# A defensive upper bound on a single logged distance (~2.5x Earth's
-# circumference) — large enough for long-haul round trips, small enough to
-# reject obviously bogus or abusive values.
+# Defensive upper bounds per activity unit — large enough for legitimate use,
+# small enough to reject obviously bogus or abusive values. The distance bound
+# is ~2.5x Earth's circumference.
 MAX_DISTANCE_KM = 100_000.0
 MAX_PASSENGERS = 1_000
+MAX_KWH = 1_000_000.0
+MAX_SERVINGS = 100
+MAX_SPEND = 10_000_000.0
+MAX_WASTE_KG = 1_000_000.0
 
 
 class FootprintRequest(BaseModel):
-    """Request body for a footprint calculation."""
+    """Request body for a footprint calculation.
+
+    A single ``mode`` plus exactly one activity quantity describes the activity.
+    The transport contract (``distance_km`` + ``passengers``) is preserved; new
+    domains add their own optional quantity field (``kwh``, ``servings``,
+    ``spend``, ``waste_kg``). The tracker for the requested domain validates
+    that the quantity it needs is present.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     domain: str = Field(min_length=1, examples=["transport"])
-    mode: TransportMode = Field(examples=["car"])
-    distance_km: float = Field(ge=0, le=MAX_DISTANCE_KM, examples=[42.0])
+    mode: FootprintMode = Field(examples=["car"])
+    distance_km: float | None = Field(
+        default=None, ge=0, le=MAX_DISTANCE_KM, examples=[42.0]
+    )
     passengers: int = Field(default=1, ge=1, le=MAX_PASSENGERS, examples=[1])
+    kwh: float | None = Field(default=None, ge=0, le=MAX_KWH, examples=[120.0])
+    servings: int | None = Field(default=None, ge=0, le=MAX_SERVINGS, examples=[2])
+    spend: float | None = Field(default=None, ge=0, le=MAX_SPEND, examples=[50.0])
+    waste_kg: float | None = Field(default=None, ge=0, le=MAX_WASTE_KG, examples=[3.0])
 
 
 class BreakdownItem(BaseModel):
