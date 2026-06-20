@@ -71,11 +71,3 @@ markers = [
 [tool.coverage.run]
 source = ["carbon"]
 branch = true
-# Phase 6-9 roadmap stubs raise NotImplementedError and are intentionally not
-# part of the MVP; they are excluded from the coverage gate until implemented.
-omit = [
-    "src/carbon/domain/trackers/*",
-    "src/carbon/application/gamification.py",
-    "src/carbon/application/leaderboard.py",
-    "src/carbon/adapters/leaderboard_store.py",
-]
