@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
-# Example CI pipeline. Adjust paths and tools to match your project.
-# Mirrors the quality gates enforced by the devops-automator skill.
+# CI pipeline for the Carbon Footprint Platform monorepo.
+# Python backend lives in backend/; quality gates mirror the
+# devops-automator skill and the rules in .ai/rules/.
 name: CI
 
 on:
@@ -11,6 +12,9 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,19 +29,19 @@ jobs:
         run: pip install uv
 
       - name: Sync environment
-        run: uv sync --all-extras || echo "No pyproject.toml yet; skipping sync"
+        run: uv sync --all-extras
 
       - name: Lint
-        run: uv run ruff check . || echo "ruff not configured yet"
+        run: uv run ruff check .
 
       - name: Format check
-        run: uv run ruff format --check . || echo "ruff not configured yet"
+        run: uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy src/ || echo "mypy/src not configured yet"
+        run: uv run mypy src
 
       - name: Tests + coverage
-        run: uv run pytest -x --cov=src --cov-report=term-missing || echo "no tests yet"
+        run: uv run pytest -x --cov=carbon --cov-report=term-missing
 
   security:
     runs-on: ubuntu-latest
@@ -55,7 +59,7 @@ jobs:
         run: pip install bandit pip-audit
 
       - name: Bandit (SAST)
-        run: bandit -r src/ || echo "no src/ yet"
+        run: bandit -r backend/src || echo "no backend/src yet"
 
       - name: pip-audit (CVE check)
         run: pip-audit || true
@@ -63,7 +67,7 @@ jobs:
       - name: SPDX header check
         run: |
           set -e
-          FILES=$(git ls-files 'src/*.py' 'tests/*.py' || true)
+          FILES=$(git ls-files 'backend/src/*.py' 'backend/tests/*.py' 'functions/*.py' || true)
           if [ -n "$FILES" ]; then
             MISSING=$(grep -L 'SPDX-License-Identifier' $FILES || true)
             if [ -n "$MISSING" ]; then
@@ -75,3 +79,65 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  commit-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine commit range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: DCO sign-off check
+        run: |
+          set -e
+          BASE="${{ steps.range.outputs.base }}"
+          HEAD="${{ steps.range.outputs.head }}"
+          if ! git rev-parse --quiet --verify "$BASE^{commit}" >/dev/null; then
+            RANGE="$HEAD"
+          else
+            RANGE="$BASE..$HEAD"
+          fi
+          FAIL=0
+          for sha in $(git rev-list --no-merges "$RANGE"); do
+            if ! git show -s --format=%B "$sha" | grep -qiE '^Signed-off-by: .+ <.+@.+>'; then
+              echo "::error::Commit $sha is missing a Signed-off-by trailer (use git commit -s)"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
+
+      - name: Conventional Commit check
+        run: |
+          set -e
+          BASE="${{ steps.range.outputs.base }}"
+          HEAD="${{ steps.range.outputs.head }}"
+          if ! git rev-parse --quiet --verify "$BASE^{commit}" >/dev/null; then
+            RANGE="$HEAD"
+          else
+            RANGE="$BASE..$HEAD"
+          fi
+          PATTERN='^(feat|fix|refactor|perf|test|docs|build|ci|chore|revert|security)(\([a-z0-9._-]+\))?!?: .{1,}$'
+          FAIL=0
+          for sha in $(git rev-list --no-merges "$RANGE"); do
+            SUBJECT=$(git show -s --format=%s "$sha")
+            if ! echo "$SUBJECT" | grep -qE "$PATTERN"; then
+              echo "::error::Commit $sha subject is not a Conventional Commit: $SUBJECT"
+              FAIL=1
+            fi
+            if [ "${#SUBJECT}" -gt 80 ]; then
+              echo "::error::Commit $sha subject exceeds 80 chars: $SUBJECT"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
