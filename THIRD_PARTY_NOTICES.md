@@ -45,3 +45,45 @@ were authored in-repo (MIT) — no upstream code or text was copied:
 |-------|------------------|--------------------------|
 | `document-skills` (docx, pdf, pptx, xlsx) | Proprietary (© Anthropic, all rights reserved) — forbids copying, retaining copies outside Anthropic services, and derivative works | `.ai/skills/document-skills/SKILL.md` — a **pointer-only** skill (MIT) that defers to the platform's native document skill at runtime or to permissively licensed libraries; no proprietary content vendored. |
 | `twitter-algorithm-optimizer` | AGPL-3.0 (blocked copyleft) | `.ai/skills/twitter-algorithm-optimizer/SKILL.md` — a **clean-room** skill (MIT) restating publicly known ranking principles in original prose; no AGPL source reproduced. |
+
+## Backend Python dependencies
+
+The backend (`backend/`) depends on the following packages. All are under
+permissive or weak-copyleft licenses on the allow-list in
+`.ai/rules/security.md`; **no GPL/AGPL/SSPL** dependency is present (verified via
+`pip-licenses` on 2026-06-20).
+
+### Runtime dependencies
+
+| Package | License |
+|---------|---------|
+| `fastapi`, `pydantic`, `pydantic-settings`, `pydantic_core`, `PyJWT`, `anyio`, `h11`, `urllib3` | MIT |
+| `starlette`, `uvicorn`, `httpx`/`httpcore`, `click`, `idna`, `python-dotenv`, `websockets` | BSD-3-Clause |
+| `firebase-admin`, `google-cloud-aiplatform`, `google-cloud-firestore`, `google-cloud-bigquery`, `google-cloud-pubsub`, `google-api-core`, `google-auth`, `googleapis-common-protos`, `grpcio`, `proto-plus`, `protobuf`, `requests`, `cryptography` | Apache-2.0 (or BSD-3-Clause for protobuf) |
+| `certifi` | MPL-2.0 (weak, file-level copyleft; used unmodified) |
+| `typing_extensions` | PSF-2.0 |
+| `defusedxml` | PSF (Python Software Foundation) |
+| `google-crc32c` | Apache-2.0 (upstream; PyPI metadata reports `UNKNOWN`) |
+
+### Development / CI tooling
+
+| Package | License |
+|---------|---------|
+| `ruff`, `mypy`, `pytest`, `pytest-cov`, `coverage`, `pytest-asyncio`, `bandit`, `pip-audit` | MIT or Apache-2.0 |
+| `pip-licenses`, `pip-system-certs` | MIT / BSD-3-Clause |
+| `pathspec` | MPL-2.0 (weak, file-level copyleft; used unmodified) |
+
+> `pip-system-certs` is a developer convenience to route `requests` through the
+> OS trust store behind a TLS-intercepting proxy; it is not a runtime dependency.
+
+## Emission-factor datasets
+
+The deterministic footprint engine uses public emission factors. Full
+per-dataset detail is in [`docs/data-sources.md`](docs/data-sources.md).
+
+| Dataset | Use | Version | License / terms |
+|---------|-----|---------|-----------------|
+| UK DEFRA / DESNZ — GHG reporting conversion factors 2024 | Transport factors (`backend/src/carbon/data/emission_factors.json`) | 2024.1 | Open Government Licence v3.0 (attribution) |
+| Benchmark reference magnitudes (`backend/src/carbon/domain/benchmarks.py`) | Relatable equivalences | — | Public reference values |
+| US EPA — Emission Factors for GHG Inventories *(roadmap)* | Energy/waste factors (Phase 6) | — | US Government work — public domain |
+| GHG Protocol emission-factor datasets *(roadmap)* | Cross-domain reference/methodology (Phase 6) | — | Free use (attribution) |
