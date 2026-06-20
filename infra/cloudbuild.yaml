@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MIT
+# Cloud Build: build, push, and deploy the backend to Cloud Run.
+# Triggered on main; uses Artifact Registry and a least-privilege runtime SA.
+
+substitutions:
+  _REGION: us-central1
+  _REPO: carbon
+  _SERVICE: carbon-api
+  _RUNTIME_SA: carbon-api-runtime
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - -f
+      - backend/Dockerfile
+      - backend
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - --region=${_REGION}
+      - --service-account=${_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --no-allow-unauthenticated
+      - --set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,VERTEX_REGION=${_REGION}
+      - --cpu=1
+      - --memory=512Mi
+      - --max-instances=10
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
