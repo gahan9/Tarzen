@@ -35,6 +35,7 @@ from carbon.api.errors import (
 from carbon.api.health import ReadinessProbe
 from carbon.api.logging_middleware import StructuredLoggingMiddleware
 from carbon.api.rate_limit import RateLimiter
+from carbon.api.security_headers import SecurityHeadersMiddleware
 from carbon.application.insights import InsightEngine
 from carbon.core.config import Settings, get_settings
 from carbon.core.logging import configure_logging
@@ -129,13 +130,14 @@ def create_app(
     app.state.settings = settings
     app.state.deps = deps or build_production_dependencies(settings)
 
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(StructuredLoggingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Trace-Id"],
     )
 
     _register_handlers(app)
