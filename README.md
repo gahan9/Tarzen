@@ -68,6 +68,43 @@ AGENTS.md                 # OpenAI Codex + Google Antigravity entry
 .antigravity/instructions.md
 ```
 
+## Carbon Footprint Platform (monorepo)
+
+This repository also hosts the **Carbon Footprint Awareness Platform** — a
+GCP-maximal, hexagonal Python/FastAPI backend with React/TS web and React
+Native + Expo mobile clients, plus a policy-gated Vertex AI Gemini insights
+agent. The `.ai/` template tooling above remains the canonical source of truth
+for agent configuration; application code lives alongside it under the
+monorepo layout below.
+
+```
+backend/                  # FastAPI (hexagonal), uv-managed Python package
+├── pyproject.toml        # PEP 621, ruff + mypy --strict + pytest
+└── src/carbon/           # domain/ application/ adapters/ api/ core/
+frontend/                 # Vite React + TypeScript web app
+mobile/                   # React Native + Expo app
+packages/shared-types/    # Shared TS types + zod schemas (web + mobile)
+functions/                # Cloud Functions (event consumers)
+infra/                    # cloudbuild.yaml + terraform/ (IAM, Cloud Run, etc.)
+docs/                     # architecture, threat-model, evaluation-mapping, ...
+```
+
+### Backend development
+
+```bash
+cd backend
+uv sync --all-extras        # create venv + install runtime and dev deps
+uv run ruff check .         # lint
+uv run ruff format --check .
+uv run mypy src             # type-check (strict)
+uv run pytest               # unit tests
+```
+
+Runtime configuration is environment-driven and validated at startup by
+`carbon.core.config.Settings` (fails fast on missing required vars). Copy
+`.env.example` to `.env` (gitignored) and fill in `GCP_PROJECT_ID` and the
+Vertex AI settings.
+
 ## Quick start
 
 1. **Use this template** on GitHub (or clone it) and rename `your_package`
