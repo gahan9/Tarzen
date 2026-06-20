@@ -2,46 +2,68 @@
 
 # Carbon Footprint — Mobile (Expo + React Native)
 
-> **Status: ROADMAP STUB (plan Phase 9).** This is an intentional scaffold, not
-> a finished app. It exists to prove the mobile target compiles against the
-> shared contract and to anchor the post-MVP build.
+Day-to-day footprint tracking companion. Runs **fully offline out of the box**
+(mock API) and shares one API contract with the web app via
+`@carbon/shared-types` (the same TypeScript types and zod schemas validate every
+`POST /api/footprint` request/response).
 
-## What this stub demonstrates
+## Capabilities
 
-- **Shared contract reuse.** The app imports `@carbon/shared-types`
-  (`file:../packages/shared-types`) — the *same* TypeScript types and zod
-  schemas the web app uses for `POST /api/footprint`. There is one source of
-  truth for request/response shapes and validation across web and mobile.
-- A single placeholder screen listing the transport modes (sourced from
-  shared-types) and the planned capabilities below.
+- **App shell + navigation** — a bottom-tab navigator with a **Log** screen
+  (form + assisted-capture card) and a **History & insights** screen.
+- **Firebase Auth** (email/password) with AsyncStorage-backed RN persistence.
+  The ID token is attached as `Authorization: Bearer <token>` and an
+  `X-Trace-Id` header is added to every API call.
+- **Offline-first log queue** — entries persist locally (AsyncStorage), queue
+  when offline, and sync automatically on reconnect (NetInfo). Deduplicated by a
+  stable `clientId` (also reused as the request trace id for server-side
+  idempotency).
+- **API client** mirroring the web (`submitFootprint`) with a mockable mode so
+  the app runs without the backend.
+- **FCM push-nudge scaffolding** (Expo notifications) — registration + handlers,
+  gated to no-op unless `EXPO_PUBLIC_ENABLE_PUSH=true` and an EAS project id are
+  set.
+- **Opt-in, consented Google Fit + Maps-assisted transport capture** — a consent
+  gate (in-app consent + OS permission, both required) that **denies capture by
+  default**; nothing location/Fit-derived is read without explicit, revocable
+  consent.
+- **Accessibility** — `accessibilityLabel`/`accessibilityRole`/
+  `accessibilityState` on interactive elements; an exhaustive `switch` over the
+  transport-mode union with a `never` default.
 
-## Planned capabilities (built post-MVP)
+## Project structure
 
-- **Offline-first logging.** A local log queue persists footprint entries while
-  offline and syncs to the backend on reconnect (idempotent, dedup on client
-  event id). Day-to-day tracking should never require connectivity.
-- **FCM nudges.** Firebase Cloud Messaging delivers streak reminders and
-  weekly-challenge nudges; batched server-side to control cost.
-- **Firebase Auth.** Same ID-token contract as web: obtain the Firebase ID
-  token and attach it as `Authorization: Bearer <token>` on API calls.
-- **Opt-in Google Fit + Maps transport capture.** Strictly consented; assisted
-  trip-distance/mode detection. **No location or fitness data is captured
-  without explicit, revocable user permission**, and never in the background
-  without consent.
-
-## Accessibility (roadmap gate)
-
-Screen-reader labels (`accessibilityLabel`/`accessibilityRole`) on every
-interactive element, adequate touch-target sizes, and sufficient contrast — to
-be verified before this target ships.
-
-## Running the stub (once dependencies are installed)
-
-```bash
-npm install     # installs Expo + shared-types (file: dependency)
-npm run typecheck
-npm start        # launches the Expo dev server
+```
+mobile/
+  App.tsx                      # provider stack + bottom-tab navigation
+  src/
+    config/env.ts              # typed EXPO_PUBLIC_* config (no secrets)
+    telemetry/trace.ts         # X-Trace-Id helper
+    api/                       # client.ts, errors.ts, mock.ts (mirror web)
+    auth/                      # firebase.ts, AuthContext.tsx, useAuth.ts, SignInBar.tsx
+    offline/                   # queue.ts, reconnect.ts, store.ts, AsyncStorage/NetInfo adapters, QueueContext
+    capture/                   # consent.ts, transport.ts (exhaustive switch), expo-location adapter, ConsentContext
+    nudges/push.ts             # gated FCM nudge scaffolding
+    screens/                   # LogScreen.tsx, HistoryScreen.tsx
+  __tests__/                   # queue.test.ts, consent.test.ts (jest, framework-free)
 ```
 
-> The full app is **not** built in this slice. Phase 9 owns the implementation;
-> Phase 5 owns end-to-end verification.
+## Configuration
+
+Copy `.env.example` to `.env` and fill in values (none are secrets). With no
+backend URL configured the app defaults to the mock API so it runs offline.
+
+## Running & verifying
+
+```bash
+npm install
+npm run typecheck   # tsc --noEmit
+npm test            # jest unit tests (offline-queue sync + consent gate)
+npm start           # Expo dev server (device/emulator)
+```
+
+> The offline queue, reconnect sync, and consent gate are written as
+> dependency-injected, framework-free modules so they are unit-tested in plain
+> Node without booting React Native or mocking native modules. For on-device
+> runtime, build the shared types once (`npm --prefix ../packages/shared-types
+> run build`) so Metro can resolve `@carbon/shared-types` from its `dist`.
