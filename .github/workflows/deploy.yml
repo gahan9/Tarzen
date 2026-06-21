@@ -46,6 +46,24 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Preflight - required deploy config
+        # Fail fast with a clear message if an environment variable that the
+        # keyless deploy depends on is missing, instead of a late auth/build error.
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          ARTIFACT_REGISTRY_REPO: ${{ vars.ARTIFACT_REGISTRY_REPO }}
+          CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+        run: |
+          missing=0
+          for v in GCP_PROJECT_ID WIF_PROVIDER DEPLOY_SERVICE_ACCOUNT \
+                   GCP_REGION ARTIFACT_REGISTRY_REPO CLOUD_RUN_SERVICE; do
+            if [ -z "${!v}" ]; then echo "::error::missing $v"; missing=1; fi
+          done
+          [ "$missing" = 0 ] || exit 1
+
       - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud (WIF / OIDC)
@@ -62,11 +80,14 @@ jobs:
         # Reuses infra/cloudbuild.yaml so the deploy path matches the
         # already-reviewed pipeline (Artifact Registry repo, runtime SA,
         # env vars, scaling). Substitutions stay overridable via repo vars.
+        # Run the build AS the deployer SA (CLOUD_LOGGING_ONLY in the config
+        # means no logs bucket is needed) so no broad default build SA is used.
         run: |
           gcloud builds submit \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --region "${{ vars.GCP_REGION }}" \
             --config infra/cloudbuild.yaml \
+            --service-account "projects/${{ vars.GCP_PROJECT_ID }}/serviceAccounts/${{ vars.DEPLOY_SERVICE_ACCOUNT }}" \
             --substitutions "_REGION=${{ vars.GCP_REGION }},_REPO=${{ vars.ARTIFACT_REGISTRY_REPO }},_SERVICE=${{ vars.CLOUD_RUN_SERVICE }}" \
             .
 
@@ -83,6 +104,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Preflight - required deploy config
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+        run: |
+          missing=0
+          for v in FIREBASE_PROJECT_ID WIF_PROVIDER DEPLOY_SERVICE_ACCOUNT; do
+            if [ -z "${!v}" ]; then echo "::error::missing $v"; missing=1; fi
+          done
+          [ "$missing" = 0 ] || exit 1
+
       - uses: actions/checkout@v4
 
       - name: Set up Node
