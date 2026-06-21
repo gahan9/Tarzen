@@ -68,6 +68,69 @@ def test_savings_success_matches_contract() -> None:
     assert data["badges_unlocked"] == []
 
 
+def test_savings_idempotency_key_dedupes_retry() -> None:
+    """A retried submit with the same Idempotency-Key scores and records once."""
+    savings_store = InMemorySavingsStore()
+    profile_store = InMemoryProfileStore()
+    client = TestClient(
+        _wired_app(savings_store=savings_store, profile_store=profile_store)
+    )
+    body = {"source": "manual", "mode": "carpool", "distance_km": 30.0, "passengers": 3}
+    headers = {**_AUTH, "Idempotency-Key": "submit-123"}
+
+    first = client.post("/api/savings", json=body, headers=headers)
+    second = client.post("/api/savings", json=body, headers=headers)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    # The retry is recognised as a replay: zero new points, same saving value.
+    assert first.json()["points_awarded"] == 12
+    assert second.json()["points_awarded"] == 0
+    assert second.json()["kg_co2e_saved"] == first.json()["kg_co2e_saved"]
+    # Non-idempotent side effects ran exactly once.
+    assert len(savings_store.records) == 1
+    assert profile_store.profiles["user-1"].total_kg_co2e_saved == 3.414
+
+
+def test_savings_distinct_idempotency_keys_each_count() -> None:
+    """Different Idempotency-Keys are distinct submits and both count."""
+    savings_store = InMemorySavingsStore()
+    client = TestClient(_wired_app(savings_store=savings_store))
+    body = {"source": "manual", "mode": "bus", "distance_km": 20.0}
+
+    first = client.post(
+        "/api/savings", json=body, headers={**_AUTH, "Idempotency-Key": "a"}
+    )
+    second = client.post(
+        "/api/savings", json=body, headers={**_AUTH, "Idempotency-Key": "b"}
+    )
+
+    assert first.json()["points_awarded"] > 0
+    assert second.json()["points_awarded"] > 0
+    assert len(savings_store.records) == 2
+
+
+def test_ticket_rejects_oversized_content_length_before_buffering() -> None:
+    """A declared Content-Length over the cap returns 413 before any read."""
+    vision = FakeVision()
+    client = TestClient(
+        build_app(
+            state_store=InMemoryGamificationStateStore(),
+            savings_store=InMemorySavingsStore(),
+            vision_client=vision,
+            distance_provider=FakeDistance(),
+            max_image_bytes=8,
+        )
+    )
+
+    resp = client.post("/api/savings/ticket", files={"image": _PNG}, headers=_AUTH)
+
+    assert resp.status_code == 413
+    assert resp.json()["error"]["code"] == "payload_too_large"
+    # Rejected before the (expensive) vision model is ever invoked.
+    assert vision.calls == []
+
+
 def test_savings_requires_auth() -> None:
     """A missing bearer token returns the 401 envelope."""
     client = TestClient(_wired_app())

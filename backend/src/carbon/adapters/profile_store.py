@@ -17,6 +17,8 @@ import hashlib
 from dataclasses import asdict, dataclass, field, replace
 from typing import Protocol
 
+from google.cloud import firestore
+
 DEFAULT_PROFILES_COLLECTION = "profiles"
 _TIMEOUT_S = 10.0
 _MAX_HANDLE_ATTEMPTS = 8
@@ -281,16 +283,16 @@ class FirestoreProfileStore:
         return profile
 
     def _add_savings_sync(self, uid: str, kg_co2e_saved: float) -> None:
-        """Blocking read-modify-write of the lifetime saved total."""
-        current = self._get_or_create_sync(uid, "global")
-        self._client.collection(self._collection).document(uid).set(  # type: ignore[attr-defined]
-            asdict(
-                replace(
-                    current,
-                    total_kg_co2e_saved=current.total_kg_co2e_saved
-                    + kg_co2e_saved,
-                )
-            )
+        """Blocking atomic increment of the lifetime saved total.
+
+        The profile document is created first if absent, then the total is
+        bumped with a server-side :class:`~google.cloud.firestore.Increment`
+        so concurrent writes accumulate without a lost-update race (no
+        read-modify-write window).
+        """
+        self._get_or_create_sync(uid, "global")
+        self._client.collection(self._collection).document(uid).update(  # type: ignore[attr-defined]
+            {"total_kg_co2e_saved": firestore.Increment(kg_co2e_saved)}
         )
 
     def _handle_taken_sync(self, handle: str) -> bool:

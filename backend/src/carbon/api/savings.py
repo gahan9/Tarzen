@@ -14,6 +14,13 @@ request path (idempotent via the processed-event ledger), records a
 data-minimized entry, and best-effort publishes an analytics event. Image
 uploads are guarded by a content-type allow-list and a size cap; image bytes are
 never logged and the same image cannot be submitted twice (hash dedupe).
+
+Idempotency: a client may send an ``Idempotency-Key`` header to make a retried
+submit safe. That key seeds the scoring ``event_id``, so a replayed request is
+recognised by the processed-event ledger and awards zero points; on a replay the
+lifetime-total increment, the savings-record write, and the analytics publish are
+all skipped so nothing double-counts. Absent the header the per-request id is
+used (each request is then scored once, as before).
 """
 
 from __future__ import annotations
@@ -60,6 +67,26 @@ _MAX_SAVINGS_BODY_BYTES = 128_000
 def _request_id(request: Request) -> str:
     """Return the correlation id stashed on the request."""
     return str(getattr(request.state, "request_id", "unknown"))
+
+
+def _event_id(request: Request, request_id: str) -> str:
+    """Return the dedupe key for scoring.
+
+    Honours a client ``Idempotency-Key`` header so a retried submit replays the
+    same scoring event; falls back to the per-request id (which is unique per
+    request) when the client does not supply one.
+    """
+    return request.headers.get("idempotency-key") or request_id
+
+
+def _replayed(outcome: ScoringOutcome | None) -> bool:
+    """Return ``True`` when scoring recognised the event as already processed.
+
+    A replayed event must not re-run the non-idempotent side effects (lifetime
+    total, savings record, analytics publish), otherwise a client retry would
+    double-count even though points are correctly awarded only once.
+    """
+    return outcome is not None and outcome.replayed
 
 
 def _scoring_fields(outcome: ScoringOutcome | None) -> tuple[int, int, list[str]]:
@@ -137,9 +164,7 @@ async def _record(
         _LOGGER.warning("savings_record_write_failed", extra={"rid": request_id})
 
 
-async def _publish(
-    publisher: EventPublisher | None, event: FootprintEvent
-) -> None:
+async def _publish(publisher: EventPublisher | None, event: FootprintEvent) -> None:
     """Best-effort Pub/Sub publish for downstream analytics."""
     if publisher is None:
         return
@@ -180,7 +205,7 @@ async def create_savings(
 
     # A client may not self-assert verification; only the ticket path verifies.
     event = build_event(
-        event_id=request_id,
+        event_id=_event_id(request, request_id),
         uid=uid,
         domain=_SAVINGS_DOMAIN,
         mode=payload.mode,
@@ -190,18 +215,19 @@ async def create_savings(
         verified=False,
     )
     outcome = await _score(deps, event=event, member=member, region=region)
-    await _persist_total(deps, uid, result.kg_co2e_saved)
-    await _record(
-        deps.savings_store,
-        uid=uid,
-        source=payload.source,
-        mode=payload.mode,
-        distance_km=payload.distance_km,
-        kg_saved=result.kg_co2e_saved,
-        verified=False,
-        request_id=request_id,
-    )
-    await _publish(deps.publisher, event)
+    if not _replayed(outcome):
+        await _persist_total(deps, uid, result.kg_co2e_saved)
+        await _record(
+            deps.savings_store,
+            uid=uid,
+            source=payload.source,
+            mode=payload.mode,
+            distance_km=payload.distance_km,
+            kg_saved=result.kg_co2e_saved,
+            verified=False,
+            request_id=request_id,
+        )
+        await _publish(deps.publisher, event)
 
     points, streak, badges = _scoring_fields(outcome)
     return SavingsResponse(
@@ -248,7 +274,7 @@ async def import_savings(
     region = deps.region_resolver.resolve(request.headers)
     member = await _resolve_member(deps, uid, region)
     event = build_event(
-        event_id=request_id,
+        event_id=_event_id(request, request_id),
         uid=uid,
         domain=_SAVINGS_DOMAIN,
         mode=_CARPOOL_MODE,
@@ -258,18 +284,19 @@ async def import_savings(
         verified=False,
     )
     outcome = await _score(deps, event=event, member=member, region=region)
-    await _persist_total(deps, uid, total_saved)
-    await _record(
-        deps.savings_store,
-        uid=uid,
-        source="import",
-        mode=_CARPOOL_MODE,
-        distance_km=0.0,
-        kg_saved=total_saved,
-        verified=False,
-        request_id=request_id,
-    )
-    await _publish(deps.publisher, event)
+    if not _replayed(outcome):
+        await _persist_total(deps, uid, total_saved)
+        await _record(
+            deps.savings_store,
+            uid=uid,
+            source="import",
+            mode=_CARPOOL_MODE,
+            distance_km=0.0,
+            kg_saved=total_saved,
+            verified=False,
+            request_id=request_id,
+        )
+        await _publish(deps.publisher, event)
 
     points, streak, badges = _scoring_fields(outcome)
     return SavingsImportResponse(
@@ -327,14 +354,20 @@ async def create_ticket_savings(
             503, "feature_unavailable", "Ticket verification is not available yet."
         )
 
+    # Reject by declared Content-Length before buffering the upload into memory.
+    enforce_body_size(request, max_bytes=deps.max_image_bytes)
     data = await image.read()
     _validate_image(image, data, deps.max_image_bytes)
     image_hash = hashlib.sha256(data).hexdigest()
 
-    if deps.savings_store is not None and await deps.savings_store.is_duplicate_image(
-        uid, image_hash
-    ):
-        raise ApiError(409, "duplicate_ticket", "This ticket was already submitted.")
+    # Atomically claim the image hash *before* the expensive vision call so two
+    # concurrent identical uploads cannot both be scored (no check-then-act race).
+    if deps.savings_store is not None:
+        reserved = await deps.savings_store.try_reserve_image(uid, image_hash)
+        if not reserved:
+            raise ApiError(
+                409, "duplicate_ticket", "This ticket was already submitted."
+            )
 
     content_type = (image.content_type or "").split(";", 1)[0].strip().lower()
     try:
@@ -360,13 +393,10 @@ async def create_ticket_savings(
         mode=mode, distance_km=distance_km, passengers=1
     )
 
-    if deps.savings_store is not None:
-        await deps.savings_store.reserve_image(uid, image_hash)
-
     region = deps.region_resolver.resolve(request.headers)
     member = await _resolve_member(deps, uid, region)
     event = build_event(
-        event_id=request_id,
+        event_id=_event_id(request, request_id),
         uid=uid,
         domain=_SAVINGS_DOMAIN,
         mode=mode,
@@ -376,19 +406,20 @@ async def create_ticket_savings(
         verified=True,
     )
     outcome = await _score(deps, event=event, member=member, region=region)
-    await _persist_total(deps, uid, result.kg_co2e_saved)
-    await _record(
-        deps.savings_store,
-        uid=uid,
-        source="ticket",
-        mode=mode,
-        distance_km=distance_km,
-        kg_saved=result.kg_co2e_saved,
-        verified=True,
-        request_id=request_id,
-        image_hash=image_hash,
-    )
-    await _publish(deps.publisher, event)
+    if not _replayed(outcome):
+        await _persist_total(deps, uid, result.kg_co2e_saved)
+        await _record(
+            deps.savings_store,
+            uid=uid,
+            source="ticket",
+            mode=mode,
+            distance_km=distance_km,
+            kg_saved=result.kg_co2e_saved,
+            verified=True,
+            request_id=request_id,
+            image_hash=image_hash,
+        )
+        await _publish(deps.publisher, event)
 
     points, streak, badges = _scoring_fields(outcome)
     return TicketResponse(

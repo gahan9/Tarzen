@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
+
+from google.api_core.exceptions import AlreadyExists, NotFound
+from google.cloud import firestore
 
 from carbon.adapters.savings_store import (
     FirestoreSavingsStore,
@@ -34,6 +38,26 @@ class _Doc:
 
     def set(self, data: dict[str, Any]) -> None:
         self._bucket[self._key] = dict(data)
+
+    def create(self, data: dict[str, Any]) -> None:
+        """Write only if absent, mirroring Firestore's atomic ``create``."""
+        if self._key in self._bucket:
+            raise AlreadyExists(self._key)  # type: ignore[no-untyped-call]
+        self._bucket[self._key] = dict(data)
+
+    def update(self, data: dict[str, Any]) -> None:
+        """Merge fields into an existing doc, applying ``Increment`` sentinels."""
+        existing = self._bucket.get(self._key)
+        if existing is None:
+            raise NotFound(self._key)  # type: ignore[no-untyped-call]
+        merged = dict(existing)
+        for key, value in data.items():
+            if isinstance(value, firestore.Increment):
+                base = merged.get(key, 0)
+                merged[key] = base + value.value
+            else:
+                merged[key] = value
+        self._bucket[self._key] = merged
 
 
 class _Query:
@@ -76,18 +100,30 @@ class RichFakeFirestore:
         return self._cols.setdefault(name, {})
 
 
-async def test_in_memory_dedupe_roundtrip() -> None:
-    """An image hash is duplicate only after it has been reserved."""
+async def test_in_memory_reserve_is_one_shot() -> None:
+    """The first reservation of a hash wins; later ones for the same key fail."""
     store = InMemorySavingsStore()
 
-    assert await store.is_duplicate_image("u1", "h1") is False
-    await store.reserve_image("u1", "h1")
-    assert await store.is_duplicate_image("u1", "h1") is True
-    assert await store.is_duplicate_image("u2", "h1") is False
+    assert await store.try_reserve_image("u1", "h1") is True
+    assert await store.try_reserve_image("u1", "h1") is False
+    # A different user reusing the same hash is independent.
+    assert await store.try_reserve_image("u2", "h1") is True
 
 
-async def test_firestore_write_and_dedupe() -> None:
-    """Firestore store writes records and tracks dedupe markers."""
+async def test_in_memory_reserve_is_atomic_under_concurrency() -> None:
+    """Concurrent reservations of one hash yield exactly one winner."""
+    store = InMemorySavingsStore()
+
+    results = await asyncio.gather(
+        *(store.try_reserve_image("u1", "dupe") for _ in range(20))
+    )
+
+    assert sum(1 for reserved in results if reserved) == 1
+    assert len(store.seen_hashes) == 1
+
+
+async def test_firestore_write_and_atomic_reserve() -> None:
+    """Firestore store writes records and reserves a hash exactly once."""
     fake = RichFakeFirestore()
     store = FirestoreSavingsStore(fake)
     record = build_savings_record(
@@ -104,6 +140,6 @@ async def test_firestore_write_and_dedupe() -> None:
     await store.write_record(record)
     assert len(fake.bucket("savings_records")) == 1
 
-    assert await store.is_duplicate_image("u1", "abc") is False
-    await store.reserve_image("u1", "abc")
-    assert await store.is_duplicate_image("u1", "abc") is True
+    assert await store.try_reserve_image("u1", "abc") is True
+    # A second attempt hits AlreadyExists from ``create`` and reports a dupe.
+    assert await store.try_reserve_image("u1", "abc") is False

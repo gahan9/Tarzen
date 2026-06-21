@@ -16,6 +16,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
+from google.api_core.exceptions import AlreadyExists
+
 DEFAULT_RECORDS_COLLECTION = "savings_records"
 DEFAULT_DEDUPE_COLLECTION = "savings_image_hashes"
 _TIMEOUT_S = 10.0
@@ -81,12 +83,14 @@ class SavingsStore(Protocol):
         """Persist a single savings record."""
         ...
 
-    async def is_duplicate_image(self, uid: str, image_hash: str) -> bool:
-        """Return ``True`` if ``uid`` already submitted this image hash."""
-        ...
+    async def try_reserve_image(self, uid: str, image_hash: str) -> bool:
+        """Atomically claim an image hash for ``uid``.
 
-    async def reserve_image(self, uid: str, image_hash: str) -> None:
-        """Record an image hash as seen for ``uid`` (dedupe marker)."""
+        Returns ``True`` when the hash was newly reserved and ``False`` when it
+        was already present. Implementations MUST perform the check-and-insert
+        atomically so two concurrent identical uploads cannot both succeed
+        (no check-then-act TOCTOU window).
+        """
         ...
 
 
@@ -101,13 +105,13 @@ class InMemorySavingsStore:
         """Append the record to the in-memory list."""
         self.records.append(record)
 
-    async def is_duplicate_image(self, uid: str, image_hash: str) -> bool:
-        """Return whether ``(uid, image_hash)`` has been reserved."""
-        return (uid, image_hash) in self.seen_hashes
-
-    async def reserve_image(self, uid: str, image_hash: str) -> None:
-        """Mark ``(uid, image_hash)`` as seen."""
-        self.seen_hashes.add((uid, image_hash))
+    async def try_reserve_image(self, uid: str, image_hash: str) -> bool:
+        """Claim ``(uid, image_hash)`` via an atomic set-membership delta."""
+        key = (uid, image_hash)
+        if key in self.seen_hashes:
+            return False
+        self.seen_hashes.add(key)
+        return True
 
 
 class FirestoreSavingsStore:
@@ -136,17 +140,10 @@ class FirestoreSavingsStore:
             asyncio.to_thread(self._write_sync, record), timeout=_TIMEOUT_S
         )
 
-    async def is_duplicate_image(self, uid: str, image_hash: str) -> bool:
-        """Check the dedupe collection for an existing marker."""
+    async def try_reserve_image(self, uid: str, image_hash: str) -> bool:
+        """Atomically reserve a dedupe marker off the event loop."""
         return await asyncio.wait_for(
-            asyncio.to_thread(self._is_duplicate_sync, uid, image_hash),
-            timeout=_TIMEOUT_S,
-        )
-
-    async def reserve_image(self, uid: str, image_hash: str) -> None:
-        """Persist a dedupe marker off the event loop."""
-        await asyncio.wait_for(
-            asyncio.to_thread(self._reserve_sync, uid, image_hash),
+            asyncio.to_thread(self._try_reserve_sync, uid, image_hash),
             timeout=_TIMEOUT_S,
         )
 
@@ -161,17 +158,18 @@ class FirestoreSavingsStore:
             asdict(record)
         )
 
-    def _is_duplicate_sync(self, uid: str, image_hash: str) -> bool:
-        """Blocking dedupe-marker existence check."""
-        doc = (
-            self._client.collection(self._dedupe_collection)  # type: ignore[attr-defined]
-            .document(self._dedupe_key(uid, image_hash))
-            .get()
-        )
-        return bool(doc.exists)
+    def _try_reserve_sync(self, uid: str, image_hash: str) -> bool:
+        """Blocking atomic dedupe-marker create.
 
-    def _reserve_sync(self, uid: str, image_hash: str) -> None:
-        """Blocking dedupe-marker write."""
-        self._client.collection(self._dedupe_collection).document(  # type: ignore[attr-defined]
+        ``create`` writes the document only if it does not already exist,
+        raising :class:`AlreadyExists` otherwise. This closes the
+        check-then-act race two concurrent identical uploads would expose.
+        """
+        doc = self._client.collection(self._dedupe_collection).document(  # type: ignore[attr-defined]
             self._dedupe_key(uid, image_hash)
-        ).set({"reserved": True})
+        )
+        try:
+            doc.create({"reserved": True})
+        except AlreadyExists:
+            return False
+        return True
