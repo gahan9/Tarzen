@@ -25,7 +25,12 @@ import {
 
 import { newTraceId } from "../telemetry/trace";
 import { ApiError } from "./errors";
-import { apiRequest, USE_MOCK, type TokenProvider } from "./http";
+import {
+  apiRequest,
+  newIdempotencyKey,
+  USE_MOCK,
+  type TokenProvider,
+} from "./http";
 import { mockImport, mockSavings, mockTicket } from "./socialMock";
 
 export interface MutationOptions {
@@ -60,6 +65,7 @@ export async function submitSavings(
     body: parsed.data,
     signal: options.signal,
     getToken: options.getToken,
+    idempotencyKey: newIdempotencyKey(),
   });
 }
 
@@ -81,6 +87,7 @@ export async function importSavings(
     body: parsed.data,
     signal: options.signal,
     getToken: options.getToken,
+    idempotencyKey: newIdempotencyKey(),
   });
 }
 
@@ -101,5 +108,6 @@ export async function submitTicket(
     formData,
     signal: options.signal,
     getToken: options.getToken,
+    idempotencyKey: newIdempotencyKey(),
   });
 }

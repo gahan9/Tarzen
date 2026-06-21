@@ -19,6 +19,18 @@ export const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === "true";
 
 export type TokenProvider = () => Promise<string | null>;
 
+/** HTTP header the backend reads to deduplicate a retried write. */
+export const IDEMPOTENCY_HEADER = "Idempotency-Key";
+
+/**
+ * Mints a fresh idempotency key. Call this ONCE per logical submit (not per
+ * network attempt) so a retry of the *same* submit reuses one key and the
+ * backend recognises it as a replay instead of double-counting.
+ */
+export function newIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
 export interface ApiRequest<T> {
   path: string;
   method: "GET" | "POST";
@@ -31,6 +43,8 @@ export interface ApiRequest<T> {
   query?: Record<string, string | undefined>;
   signal?: AbortSignal;
   getToken?: TokenProvider;
+  /** Per-submit idempotency key, sent as the `Idempotency-Key` header. */
+  idempotencyKey?: string;
 }
 
 function buildUrl(path: string, query?: Record<string, string | undefined>): string {
@@ -59,6 +73,9 @@ export async function apiRequest<T>(request: ApiRequest<T>): Promise<T> {
   };
   if (!request.formData) {
     headers["Content-Type"] = "application/json";
+  }
+  if (request.idempotencyKey) {
+    headers[IDEMPOTENCY_HEADER] = request.idempotencyKey;
   }
 
   const token = request.getToken ? await request.getToken() : null;
