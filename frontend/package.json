@@ -18,9 +18,13 @@
   },
   "dependencies": {
     "@carbon/shared-types": "file:../packages/shared-types",
+    "@react-three/fiber": "^8.18.0",
     "firebase": "^10.13.0",
+    "papaparse": "^5.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.4",
+    "three": "^0.169.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -30,8 +34,10 @@
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.169.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.3.1",

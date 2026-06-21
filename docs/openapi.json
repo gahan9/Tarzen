@@ -137,10 +137,380 @@
           }
         }
       }
+    },
+    "/api/savings": {
+      "post": {
+        "tags": [
+          "savings"
+        ],
+        "summary": "Create Savings",
+        "description": "Record a single manual/carpool saving and score it live.",
+        "operationId": "create_savings_api_savings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/savings/import": {
+      "post": {
+        "tags": [
+          "savings"
+        ],
+        "summary": "Import Savings",
+        "description": "Import a batch of carpool rows, scored as a single live event.",
+        "operationId": "import_savings_api_savings_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavingsImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavingsImportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/savings/ticket": {
+      "post": {
+        "tags": [
+          "savings"
+        ],
+        "summary": "Create Ticket Savings",
+        "description": "Parse a transit-ticket image into a verified saving with a bonus.",
+        "operationId": "create_ticket_savings_api_savings_ticket_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_ticket_savings_api_savings_ticket_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leaderboard": {
+      "get": {
+        "tags": [
+          "social"
+        ],
+        "summary": "Get Leaderboard",
+        "description": "Return the anonymous leaderboard for a scope plus the caller's standing.",
+        "operationId": "get_leaderboard_api_leaderboard_get",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "region",
+                "global"
+              ],
+              "type": "string",
+              "default": "global",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaderboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": [
+          "social"
+        ],
+        "summary": "Get Profile",
+        "description": "Return the caller's anonymous profile and gamification state.",
+        "operationId": "get_profile_api_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Body_create_ticket_savings_api_savings_ticket_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_create_ticket_savings_api_savings_ticket_post"
+      },
       "BreakdownItem": {
         "properties": {
           "label": {
@@ -159,6 +529,50 @@
         ],
         "title": "BreakdownItem",
         "description": "A labelled contribution to the footprint total."
+      },
+      "CarpoolImportRow": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "examples": [
+              "2026-06-01"
+            ]
+          },
+          "distance_km": {
+            "type": "number",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "examples": [
+              18.5
+            ]
+          },
+          "passengers": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Passengers",
+            "default": 1,
+            "examples": [
+              2
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "distance_km"
+        ],
+        "title": "CarpoolImportRow",
+        "description": "One row of a CSV/trip-history carpool import (carpool is implied)."
       },
       "ErrorDetail": {
         "properties": {
@@ -208,12 +622,51 @@
             ]
           },
           "mode": {
-            "type": "string",
-            "enum": [
-              "car",
-              "bus",
-              "rail",
-              "flight"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "car",
+                  "bus",
+                  "rail",
+                  "flight"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "electricity",
+                  "natural_gas"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "beef_meal",
+                  "pork_meal",
+                  "chicken_meal",
+                  "fish_meal",
+                  "vegetarian_meal",
+                  "vegan_meal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "clothing",
+                  "electronics",
+                  "furniture",
+                  "general_goods"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "landfill",
+                  "recycling",
+                  "composting"
+                ]
+              }
             ],
             "title": "Mode",
             "examples": [
@@ -221,9 +674,16 @@
             ]
           },
           "distance_km": {
-            "type": "number",
-            "maximum": 100000.0,
-            "minimum": 0.0,
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Distance Km",
             "examples": [
               42.0
@@ -238,17 +698,80 @@
             "examples": [
               1
             ]
+          },
+          "kwh": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kwh",
+            "examples": [
+              120.0
+            ]
+          },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings",
+            "examples": [
+              2
+            ]
+          },
+          "spend": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend",
+            "examples": [
+              50.0
+            ]
+          },
+          "waste_kg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Kg",
+            "examples": [
+              3.0
+            ]
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "domain",
-          "mode",
-          "distance_km"
+          "mode"
         ],
         "title": "FootprintRequest",
-        "description": "Request body for a footprint calculation."
+        "description": "Request body for a footprint calculation.\n\nA single ``mode`` plus exactly one activity quantity describes the activity.\nThe transport contract (``distance_km`` + ``passengers``) is preserved; new\ndomains add their own optional quantity field (``kwh``, ``servings``,\n``spend``, ``waste_kg``). The tracker for the requested domain validates\nthat the quantity it needs is present."
       },
       "FootprintResponse": {
         "properties": {
@@ -280,6 +803,19 @@
         ],
         "title": "FootprintResponse",
         "description": "Successful response for a footprint calculation."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "Insight": {
         "properties": {
@@ -317,6 +853,513 @@
         ],
         "title": "Insight",
         "description": "Human-friendly framing of a footprint result."
+      },
+      "LeaderboardEntry": {
+        "properties": {
+          "anon_handle": {
+            "type": "string",
+            "title": "Anon Handle"
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emoji"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "anon_handle",
+          "score",
+          "rank"
+        ],
+        "title": "LeaderboardEntry",
+        "description": "A single ranked, anonymised competitor."
+      },
+      "LeaderboardResponse": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "region",
+              "global"
+            ],
+            "title": "Scope"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/LeaderboardEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "my_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Rank"
+          },
+          "percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentile"
+          },
+          "tips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tips"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "entries",
+          "tips"
+        ],
+        "title": "LeaderboardResponse",
+        "description": "Anonymous leaderboard view with the caller's standing and tips."
+      },
+      "ProfileResponse": {
+        "properties": {
+          "anon_handle": {
+            "type": "string",
+            "title": "Anon Handle"
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emoji"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "streak_days": {
+            "type": "integer",
+            "title": "Streak Days"
+          },
+          "badges": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges"
+          },
+          "total_kg_co2e_saved": {
+            "type": "number",
+            "title": "Total Kg Co2E Saved"
+          },
+          "my_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Rank"
+          },
+          "percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anon_handle",
+          "points",
+          "streak_days",
+          "badges",
+          "total_kg_co2e_saved"
+        ],
+        "title": "ProfileResponse",
+        "description": "The caller's anonymous, public-safe profile and gamification state."
+      },
+      "SavingsImportRequest": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CarpoolImportRow"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "title": "SavingsImportRequest",
+        "description": "Request body for a batch carpool import."
+      },
+      "SavingsImportResponse": {
+        "properties": {
+          "total_kg_co2e_saved": {
+            "type": "number",
+            "title": "Total Kg Co2E Saved"
+          },
+          "rows_imported": {
+            "type": "integer",
+            "title": "Rows Imported"
+          },
+          "points_awarded": {
+            "type": "integer",
+            "title": "Points Awarded"
+          },
+          "badges_unlocked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges Unlocked"
+          },
+          "streak_days": {
+            "type": "integer",
+            "title": "Streak Days"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_kg_co2e_saved",
+          "rows_imported",
+          "points_awarded",
+          "badges_unlocked",
+          "streak_days",
+          "request_id"
+        ],
+        "title": "SavingsImportResponse",
+        "description": "Successful response for a batch carpool import."
+      },
+      "SavingsRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "import",
+              "ticket"
+            ],
+            "title": "Source",
+            "default": "manual",
+            "examples": [
+              "manual"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "carpool",
+              "bus",
+              "rail"
+            ],
+            "title": "Mode",
+            "examples": [
+              "carpool"
+            ]
+          },
+          "distance_km": {
+            "type": "number",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "examples": [
+              12.0
+            ]
+          },
+          "passengers": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Passengers",
+            "default": 1,
+            "examples": [
+              3
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mode",
+          "distance_km"
+        ],
+        "title": "SavingsRequest",
+        "description": "Request body for a single manual/carpool savings entry."
+      },
+      "SavingsResponse": {
+        "properties": {
+          "kg_co2e_saved": {
+            "type": "number",
+            "title": "Kg Co2E Saved"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "points_awarded": {
+            "type": "integer",
+            "title": "Points Awarded"
+          },
+          "badges_unlocked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges Unlocked"
+          },
+          "streak_days": {
+            "type": "integer",
+            "title": "Streak Days"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kg_co2e_saved",
+          "verified",
+          "points_awarded",
+          "badges_unlocked",
+          "streak_days",
+          "request_id"
+        ],
+        "title": "SavingsResponse",
+        "description": "Successful response for a single savings entry.\n\nPoints/streak/badges are server-authoritative (never client-supplied)."
+      },
+      "TicketExtraction": {
+        "properties": {
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "carpool",
+                  "bus",
+                  "rail"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "fare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fare"
+          }
+        },
+        "type": "object",
+        "title": "TicketExtraction",
+        "description": "Best-effort fields a vision model extracts from a transit ticket.\n\nEvery field is optional: an illegible receipt may yield only some of them."
+      },
+      "TicketResponse": {
+        "properties": {
+          "kg_co2e_saved": {
+            "type": "number",
+            "title": "Kg Co2E Saved"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "points_awarded": {
+            "type": "integer",
+            "title": "Points Awarded"
+          },
+          "badges_unlocked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges Unlocked"
+          },
+          "streak_days": {
+            "type": "integer",
+            "title": "Streak Days"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketExtraction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kg_co2e_saved",
+          "verified",
+          "points_awarded",
+          "badges_unlocked",
+          "streak_days",
+          "request_id"
+        ],
+        "title": "TicketResponse",
+        "description": "Verified-ticket response \u2014 the savings result plus what was read."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     }
   }

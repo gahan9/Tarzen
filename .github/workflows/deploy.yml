@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: MIT
+# Manual deployment for the Carbon Footprint Platform monorepo.
+#
+# Backend  -> Cloud Run, by submitting the existing infra/cloudbuild.yaml
+#             (single source of truth for build+push+deploy; avoids drift).
+# Frontend -> Firebase Hosting, built with Vite then deployed via firebase-tools.
+#
+# Auth is keyless: GCP Workload Identity Federation (OIDC). No JSON keys are
+# stored in the repo or in GitHub secrets. The only sensitive trust is the
+# WIF provider <-> repo binding configured GCP-side (see README/report).
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target deployment environment.
+        type: choice
+        default: production
+        options:
+          - production
+          - staging
+      target:
+        description: Which part of the stack to deploy.
+        type: choice
+        default: both
+        options:
+          - both
+          - backend
+          - frontend
+
+# Keyless OIDC: id-token to mint the federated credential, contents to checkout.
+permissions:
+  id-token: write
+  contents: read
+
+# Never run two deploys to the same environment concurrently.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    name: Backend -> Cloud Run
+    if: ${{ inputs.target == 'backend' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF / OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Submit Cloud Build (build + push + deploy to Cloud Run)
+        # Reuses infra/cloudbuild.yaml so the deploy path matches the
+        # already-reviewed pipeline (Artifact Registry repo, runtime SA,
+        # env vars, scaling). Substitutions stay overridable via repo vars.
+        run: |
+          gcloud builds submit \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --config infra/cloudbuild.yaml \
+            --substitutions "_REGION=${{ vars.GCP_REGION }},_REPO=${{ vars.ARTIFACT_REGISTRY_REPO }},_SERVICE=${{ vars.CLOUD_RUN_SERVICE }}" \
+            .
+
+      - name: Show deployed service URL
+        run: |
+          gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --format 'value(status.url)'
+
+  frontend:
+    name: Frontend -> Firebase Hosting
+    if: ${{ inputs.target == 'frontend' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build shared-types contract
+        working-directory: packages/shared-types
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Authenticate to Google Cloud (WIF / OIDC)
+        # Exports ADC to a file and sets GOOGLE_APPLICATION_CREDENTIALS so the
+        # firebase CLI deploys keylessly (no FIREBASE_TOKEN / JSON key needed).
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.FIREBASE_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase Hosting
+        working-directory: frontend
+        env:
+          # If FIREBASE_HOSTING_SITE is set, deploy only that site; otherwise
+          # deploy every hosting target defined in firebase.json.
+          FIREBASE_HOSTING_SITE: ${{ vars.FIREBASE_HOSTING_SITE }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+        run: |
+          if [ -n "$FIREBASE_HOSTING_SITE" ]; then
+            ONLY="hosting:$FIREBASE_HOSTING_SITE"
+          else
+            ONLY="hosting"
+          fi
+          npx --yes firebase-tools@13 deploy \
+            --only "$ONLY" \
+            --project "$FIREBASE_PROJECT_ID" \
+            --non-interactive
