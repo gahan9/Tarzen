@@ -120,6 +120,9 @@ function Forest({ savedKg }: SavingsSceneProps) {
 
     if (!grownRef.current) {
       const elapsed = state.clock.elapsedTime;
+      // `allDone` is mutated from inside the per-tree callback below (a closure)
+      // so one pass both writes the matrices and reports whether every tree has
+      // finished growing — avoiding a second loop over the instances each frame.
       let allDone = true;
       writeMatrices((tree) => {
         const local = (elapsed - tree.delay) / GROW_DURATION;
