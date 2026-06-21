@@ -7,10 +7,6 @@ substitutions:
   _REPO: carbon
   _SERVICE: carbon-api
   _RUNTIME_SA: carbon-api-runtime
-  _FUNCTION: carbon-aggregator
-  _AGGREGATOR_SA: carbon-aggregator
-  _AGGREGATE_DATASET: carbon_analytics
-  _AGGREGATE_TABLE: footprint_aggregates
 
 steps:
   - id: build
@@ -43,35 +39,6 @@ steps:
       - --set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,VERTEX_REGION=${_REGION},CORS_ALLOWED_ORIGINS=https://ecotrace.web.app
       - --cpu=1
       - --memory=512Mi
-      - --max-instances=10
-
-  # Stage the carbon package into the function source so `./backend` in
-  # functions/requirements.txt resolves during the Cloud Functions build.
-  - id: stage-function
-    name: gcr.io/cloud-builders/gcloud
-    entrypoint: bash
-    args:
-      - -c
-      - cp -r backend functions/backend
-
-  # Deploy the event-driven aggregation consumer (gen2, Pub/Sub-triggered).
-  # Runs under its own least-privilege SA; a poison message dead-letters rather
-  # than blocking the subscription.
-  - id: deploy-function
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - functions
-      - deploy
-      - ${_FUNCTION}
-      - --gen2
-      - --region=${_REGION}
-      - --runtime=python312
-      - --source=functions
-      - --entry-point=handle_footprint_event
-      - --trigger-topic=footprint-events
-      - --service-account=${_AGGREGATOR_SA}@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,AGGREGATE_TABLE_ID=$PROJECT_ID.${_AGGREGATE_DATASET}.${_AGGREGATE_TABLE}
       - --max-instances=10
 
 images:
