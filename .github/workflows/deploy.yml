@@ -83,12 +83,16 @@ jobs:
         # Run the build AS the deployer SA (CLOUD_LOGGING_ONLY in the config
         # means no logs bucket is needed) so no broad default build SA is used.
         run: |
+          # SHORT_SHA is auto-populated only for trigger-based builds; for a
+          # manual `builds submit` it is empty, which yields an invalid image
+          # tag (carbon-api:). Supply it explicitly from the checked-out commit.
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           gcloud builds submit \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --region "${{ vars.GCP_REGION }}" \
             --config infra/cloudbuild.yaml \
             --service-account "projects/${{ vars.GCP_PROJECT_ID }}/serviceAccounts/${{ vars.DEPLOY_SERVICE_ACCOUNT }}" \
-            --substitutions "_REGION=${{ vars.GCP_REGION }},_REPO=${{ vars.ARTIFACT_REGISTRY_REPO }},_SERVICE=${{ vars.CLOUD_RUN_SERVICE }}" \
+            --substitutions "SHORT_SHA=${SHORT_SHA},_REGION=${{ vars.GCP_REGION }},_REPO=${{ vars.ARTIFACT_REGISTRY_REPO }},_SERVICE=${{ vars.CLOUD_RUN_SERVICE }}" \
             .
 
       - name: Show deployed service URL
