@@ -113,9 +113,10 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
           DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
           missing=0
-          for v in FIREBASE_PROJECT_ID WIF_PROVIDER DEPLOY_SERVICE_ACCOUNT; do
+          for v in FIREBASE_PROJECT_ID WIF_PROVIDER DEPLOY_SERVICE_ACCOUNT API_BASE_URL; do
             if [ -z "${!v}" ]; then echo "::error::missing $v"; missing=1; fi
           done
           [ "$missing" = 0 ] || exit 1
@@ -141,6 +142,11 @@ jobs:
 
       - name: Production build
         working-directory: frontend
+        # VITE_API_BASE_URL is baked in at build time; without it the bundle
+        # falls back to a same-origin "" base and the hosted site cannot reach
+        # the Cloud Run backend. Sourced from the production env variable.
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: npm run build
 
       - name: Authenticate to Google Cloud (WIF / OIDC)
