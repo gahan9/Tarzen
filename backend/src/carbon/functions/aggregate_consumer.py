@@ -60,6 +60,8 @@ def decode_message(data: bytes | str) -> FootprintEvent:
             kg_co2e=float(raw["kg_co2e"]),
             request_id=str(raw["request_id"]),
             occurred_at=str(raw["occurred_at"]),
+            source=str(raw.get("source", "manual")),
+            verified=bool(raw.get("verified", False)),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise MessageDecodeError("payload missing required event fields") from exc

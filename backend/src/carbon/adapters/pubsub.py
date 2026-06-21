@@ -18,16 +18,19 @@ import google.cloud.pubsub_v1 as pubsub_v1
 
 @dataclass(frozen=True, slots=True)
 class FootprintEvent:
-    """An event emitted when a footprint is logged.
+    """An event emitted when a footprint or saving is logged.
 
     Attributes:
         event_id: Idempotency key for replay-safe consumers.
         uid: Authenticated user id.
-        domain: Footprint domain.
+        domain: Footprint domain (e.g. ``transport`` or ``savings``).
         mode: Activity mode.
-        kg_co2e: Computed emissions.
+        kg_co2e: Computed emissions (or avoided emissions for savings).
         request_id: Correlation id for tracing.
         occurred_at: UTC ISO-8601 timestamp.
+        source: Provenance of the event (``manual``, ``import``, ``ticket``).
+        verified: ``True`` only when the server validated the activity (e.g. a
+            parsed transit ticket); drives the anti-cheat verification bonus.
     """
 
     event_id: str
@@ -37,6 +40,8 @@ class FootprintEvent:
     kg_co2e: float
     request_id: str
     occurred_at: str
+    source: str = "manual"
+    verified: bool = False
 
 
 def build_event(
@@ -47,6 +52,8 @@ def build_event(
     mode: str,
     kg_co2e: float,
     request_id: str,
+    source: str = "manual",
+    verified: bool = False,
 ) -> FootprintEvent:
     """Construct a footprint event stamped with the current UTC time."""
     return FootprintEvent(
@@ -57,6 +64,8 @@ def build_event(
         kg_co2e=kg_co2e,
         request_id=request_id,
         occurred_at=datetime.now(UTC).isoformat(),
+        source=source,
+        verified=verified,
     )
 
 
