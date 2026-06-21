@@ -33,15 +33,20 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov"],
       // Scope the gate to the unit-tested surface: pure logic and presentational
-      // components. Networked auth/Firebase wiring and the app shell are covered
-      // by integration/Lighthouse, not these unit thresholds.
+      // components. The networked client wrappers (savingsClient/socialClient)
+      // carry a deliberate `USE_MOCK` escape branch that unit tests do not
+      // exercise, so they are covered behaviourally but kept out of the
+      // line/branch gate (as with the auth/Firebase wiring and app shell).
       include: [
         "src/shared/telemetry/**",
         "src/shared/api/mock.ts",
         "src/shared/api/errors.ts",
+        "src/shared/api/http.ts",
+        "src/shared/hooks/useAsyncFn.ts",
         "src/shared/a11y/**",
         "src/features/insights/**",
         "src/features/footprint/FootprintForm.tsx",
+        "src/features/savings/CsvImport.tsx",
       ],
       thresholds: {
         lines: 90,
