@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from carbon.domain.errors import UnsupportedDomainError
 from carbon.domain.ports import DomainTracker
+from carbon.domain.savings import SavingsCalculator
 from carbon.domain.trackers.energy import EnergyTracker
 from carbon.domain.trackers.food import FoodTracker
 from carbon.domain.trackers.shopping import ShoppingTracker
@@ -53,3 +54,13 @@ def build_default_registry() -> TrackerRegistry:
         WasteTracker(),
     )
     return TrackerRegistry({tracker.domain: tracker for tracker in trackers})
+
+
+def build_savings_calculator() -> SavingsCalculator:
+    """Build the avoided-emissions calculator used by the savings endpoints.
+
+    Lives beside the tracker registry so the savings concept is constructed in
+    the same place as the emitting domains, even though it returns a distinct
+    :class:`~carbon.domain.savings.SavingsResult` rather than a tracker.
+    """
+    return SavingsCalculator()

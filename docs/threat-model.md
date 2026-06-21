@@ -3,9 +3,12 @@
 # Threat model
 
 Scope: the runnable MVP — the web client and the `POST /api/footprint` endpoint
-on Cloud Run, including the policy-gated Gemini call. Trust boundary: every field
-in the request body and every token in the `Authorization` header is **untrusted
-input**. The deterministic engine, not the LLM, owns all numbers.
+on Cloud Run, including the policy-gated Gemini call — plus the carbon-savings,
+verified-ticket, and anonymous leaderboard endpoints (`POST /api/savings`,
+`/api/savings/import`, `/api/savings/ticket`; `GET /api/leaderboard`,
+`/api/profile`). Trust boundary: every field in the request body, every uploaded
+file, and every token in the `Authorization` header is **untrusted input**. The
+deterministic engine, not the LLM/vision model, owns all numbers.
 
 ## Abuse cases and implemented mitigations
 
@@ -83,6 +86,57 @@ input**. The deterministic engine, not the LLM, owns all numbers.
   `{code, message, request_id}`); structured-log fields enumerated in
   `logging_middleware.py`.
 
+### 6. Image-upload abuse (oversized/hostile files, replay, scoring inflation)
+
+- **Risk**: a user uploads a huge or non-image file to exhaust memory/quota, or
+  re-submits the same ticket image repeatedly to farm the verification bonus.
+- **Mitigation**:
+  - Content-type allow-list (PNG/JPEG/WebP) → `415`, hard size cap
+    (`MAX_IMAGE_BYTES`, default 5 MB) → `413`, empty body → `422`
+    (`api/savings.py:_validate_image`).
+  - **Image-hash dedupe**: a SHA-256 of the bytes is checked against the user's
+    prior submissions; a repeat returns `409 duplicate_ticket` and earns nothing
+    (`is_duplicate_image` / `reserve_image` in `adapters/savings_store.py`).
+  - **Anti-cheat**: `verified=True` and the bonus are set **server-side** only on
+    the ticket path after a successful vision + distance resolution — never from
+    a client field (`api/savings.py`); points come from `GamificationService`,
+    not the request.
+  - **Privacy**: image bytes are never logged and never persisted — only the
+    derived hash and the resulting numbers are stored (data-minimized record).
+    EXIF is ignored; the vision call is bounded by the same timeout/retry guards
+    as Gemini.
+  - The ticket path degrades to `503` when the vision/distance providers are not
+    configured, rather than fabricating a saving.
+- **Proof**: `tests/unit/test_savings_routes.py` (oversized/unsupported/empty,
+  duplicate `409`, server-set verification), `tests/unit/test_vision.py`,
+  `tests/unit/test_savings_store.py` (dedupe).
+
+### 7. Geo-IP / region privacy
+
+- **Risk**: deriving a leaderboard region leaks precise location or stores the
+  client IP.
+- **Mitigation**: the region comes from a coarse load-balancer header (default
+  `x-client-geo-country`) read behind the `RegionResolver` port
+  (`adapters/region.py`); the raw client IP is never read or stored, and **no
+  GeoIP database is bundled** (no licensing or PII footprint). The value is
+  mapped to an opaque board key; unknown/absent regions fall back to `global`.
+  Region is stored only on the anonymous profile, not joined to footprint logs.
+- **Proof**: `tests/unit/test_region.py` (header → region, fallback to global).
+
+### 8. De-anonymisation of the leaderboard
+
+- **Risk**: the public leaderboard exposes who a competitor is, or lets a caller
+  enumerate other users.
+- **Mitigation**: entries carry only a **deterministic anonymous handle**
+  (adjective+animal+hash, e.g. `SwiftFox-4821`) and a score — never the `uid`,
+  email, or any free text (`adapters/profile_store.py`, `api/social.py`,
+  `models/schemas.py:LeaderboardEntry`). The caller's own row is flagged with
+  `is_me` server-side; `GET /api/profile` returns only the caller's own
+  public-safe state. Handles are uniqueness-checked so two users never collide,
+  and the leaderboard read is capped at `LEADERBOARD_TOP_N`.
+- **Proof**: `tests/unit/test_social_routes.py`, `tests/unit/test_profile_store.py`
+  (handle determinism + uniqueness, anonymised projection).
+
 ## Residual risks / follow-ups
 
 - The MVP rate limiter is in-memory and per-instance; multi-instance Cloud Run
@@ -94,3 +148,12 @@ input**. The deterministic engine, not the LLM, owns all numbers.
   copy; the deterministic fallback bounds the worst case.
 - IAM least-privilege is authored in Terraform but not yet applied to a live
   project (no live deploy in scope).
+- The leaderboard ZSET is per-instance in-memory unless `REDIS_HOST` is set; on
+  multi-instance Cloud Run, ranks are only globally consistent with the
+  Memorystore backend (Terraform provisions it; the swap is automatic — see
+  `backend/src/carbon/main.py:_build_leaderboard_store`). Image-hash dedupe is
+  similarly only global when backed by Firestore.
+- Live scoring runs best-effort **synchronously** in the request path; the async
+  Cloud Function consumer (`functions/aggregate_consumer.py`) is still a stub, so
+  a failed best-effort write is not retried out-of-band (idempotency is preserved
+  by the processed-event ledger when the consumer lands).

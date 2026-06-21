@@ -9,6 +9,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    proxy: {
+      // Local FastAPI from `backend/dev_server.py` (see README).
+      "/api": { target: "http://127.0.0.1:8080", changeOrigin: true },
+    },
   },
   build: {
     sourcemap: true,

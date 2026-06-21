@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+# Cloud Function (gen2) runtime deps. The aggregate-consumer stub needs only the
+# Functions Framework; data-plane clients are added when Phase 7 lands.
+functions-framework>=3.5,<4

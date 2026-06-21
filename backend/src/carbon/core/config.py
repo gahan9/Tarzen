@@ -29,6 +29,17 @@ class Settings(BaseSettings):
         service_account_key: Optional service-account JSON, kept secret. Models
             the secret-handling pattern; unused by the MVP which relies on
             Application Default Credentials.
+        maps_api_key: Google Maps Distance Matrix key for verified-ticket
+            distance lookups; absent disables the distance provider.
+        geo_country_header: Load-balancer header carrying the client's region.
+        max_image_bytes: Hard cap on uploaded ticket image size.
+        leaderboard_top_n: Number of entries returned by the leaderboard read.
+        redis_host: Memorystore host; when set, the leaderboard uses the Redis
+            ZSET backend instead of the per-instance in-memory store.
+        redis_port: Memorystore port.
+        redis_password: Memorystore AUTH string, kept secret.
+        redis_use_tls: Whether to connect to Memorystore over TLS (matches the
+            instance's in-transit encryption setting).
     """
 
     model_config = SettingsConfigDict(
@@ -47,6 +58,14 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173"]
     )
     service_account_key: SecretStr | None = Field(default=None)
+    maps_api_key: SecretStr | None = Field(default=None)
+    geo_country_header: str = Field(default="x-client-geo-country", min_length=1)
+    max_image_bytes: int = Field(default=5_000_000, ge=1, le=20_000_000)
+    leaderboard_top_n: int = Field(default=50, ge=1, le=500)
+    redis_host: str | None = Field(default=None)
+    redis_port: int = Field(default=6379, ge=1, le=65535)
+    redis_password: SecretStr | None = Field(default=None)
+    redis_use_tls: bool = Field(default=False)
 
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod

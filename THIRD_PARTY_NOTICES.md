@@ -57,8 +57,9 @@ permissive or weak-copyleft licenses on the allow-list in
 
 | Package | License |
 |---------|---------|
-| `fastapi`, `pydantic`, `pydantic-settings`, `pydantic_core`, `PyJWT`, `anyio`, `h11`, `urllib3` | MIT |
+| `fastapi`, `pydantic`, `pydantic-settings`, `pydantic_core`, `PyJWT`, `anyio`, `h11`, `urllib3`, `redis` | MIT |
 | `starlette`, `uvicorn`, `httpx`/`httpcore`, `click`, `idna`, `python-dotenv`, `websockets` | BSD-3-Clause |
+| `python-multipart` (multipart ticket-image uploads) | Apache-2.0 |
 | `firebase-admin`, `google-cloud-aiplatform`, `google-cloud-firestore`, `google-cloud-bigquery`, `google-cloud-pubsub`, `google-api-core`, `google-auth`, `googleapis-common-protos`, `grpcio`, `proto-plus`, `protobuf`, `requests`, `cryptography` | Apache-2.0 (or BSD-3-Clause for protobuf) |
 | `certifi` | MPL-2.0 (weak, file-level copyleft; used unmodified) |
 | `typing_extensions` | PSF-2.0 |
@@ -75,6 +76,27 @@ permissive or weak-copyleft licenses on the allow-list in
 
 > `pip-system-certs` is a developer convenience to route `requests` through the
 > OS trust store behind a TLS-intercepting proxy; it is not a runtime dependency.
+
+## Frontend (web) dependencies
+
+The web app (`frontend/`) is MIT-licensed. Its runtime dependencies are all
+under permissive licenses on the allow-list in `.ai/rules/security.md`; **no
+GPL/AGPL/SSPL** dependency is present. No binary assets (3D models, textures,
+fonts, or images) are bundled — the savings visualization is generated procedurally.
+
+| Package | Use | License |
+|---------|-----|---------|
+| `react`, `react-dom` | UI runtime | MIT |
+| `react-router-dom` | Client-side routing (`/`, `/savings`, `/leaderboard`, `/profile`) | MIT |
+| `three` | WebGL engine for the savings visualization (lazy-loaded async chunk) | MIT |
+| `@react-three/fiber` | React renderer for `three` (procedural geometry only) | MIT |
+| `papaparse` | CSV parsing for carpool trip-history import | MIT |
+| `firebase` | Auth (ID token on API calls) | Apache-2.0 |
+| `zod` | Runtime contract validation (shared with `@carbon/shared-types`) | MIT |
+
+> The `three` engine is isolated in a `React.lazy`/route-split chunk so it never
+> enters the main bundle. Approximate sizes recorded for size auditing:
+> lazy 3D chunk ~822 kB raw / ~222 kB gzip; main bundle ~440 kB / ~118 kB gzip.
 
 ## Emission-factor datasets
 

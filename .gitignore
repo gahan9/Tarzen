@@ -50,3 +50,8 @@ dist-ssr/
 *.local
 .expo/
 web-build/
+
+# Build / deploy / coverage artifacts (generated, never committed)
+.firebase/
+coverage/
+*.tsbuildinfo

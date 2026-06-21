@@ -105,6 +105,24 @@ Runtime configuration is environment-driven and validated at startup by
 `.env.example` to `.env` (gitignored) and fill in `GCP_PROJECT_ID` and the
 Vertex AI settings.
 
+### Local web + API (browser, no GCP)
+
+Use the in-memory dev ASGI app and Vite’s `/api` proxy so you can open the UI
+at `http://localhost:5173` without Cloud credentials.
+
+1. **API** (from `backend/`, with the project venv active):
+
+   ```bash
+   .venv/Scripts/python -m uvicorn dev_server:app --host 127.0.0.1 --port 8080 --reload
+   ```
+
+   On Unix: `.venv/bin/python -m uvicorn dev_server:app --host 127.0.0.1 --port 8080 --reload`
+
+2. **Web** (from `frontend/`): `npm run dev`
+
+The fake auth verifier accepts any bearer token except the literal `bad`; use
+`Authorization: Bearer good` when calling the API directly.
+
 ## Quick start
 
 1. **Use this template** on GitHub (or clone it) and rename `your_package`

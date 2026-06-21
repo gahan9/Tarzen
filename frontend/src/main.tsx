@@ -3,6 +3,7 @@ import * as React from "react";
 import { StrictMode } from "react";
 import * as ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
 import { AuthProvider } from "./shared/auth/AuthContext";
@@ -27,7 +28,9 @@ void enableAxeInDev();
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </AuthProvider>
   </StrictMode>,
 );

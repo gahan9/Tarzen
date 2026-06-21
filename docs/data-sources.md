@@ -42,6 +42,23 @@ fields when those trackers are implemented.
 | **US EPA — Emission Factors for Greenhouse Gas Inventories** | Energy (grid intensity), waste factors | US Government work — public domain (no copyright) |
 | **GHG Protocol — emission factor datasets / tools** | Cross-domain reference and methodology | Free use under GHG Protocol terms (attribution) |
 
+## Runtime lookup services (non-factor data)
+
+The savings/verified-ticket and leaderboard features consult two external data
+inputs at request time. Neither contributes emission factors — the deterministic
+engine still owns every kg CO₂e number — and neither bundles a licensed dataset
+into the repo.
+
+| Service | Used for | Access | Privacy / terms |
+|---------|----------|--------|-----------------|
+| **Google Maps Distance Matrix API** | Resolve the road distance between a verified ticket's origin and destination so `SavingsCalculator` can compute avoided emissions (`adapters/maps.py`) | HTTPS call with an API key held as `SecretStr` (`MAPS_API_KEY`, Secret Manager); 8 s timeout; behind the `DistanceProvider` port so tests inject a fake | Google Maps Platform Terms of Service. No map data is stored; only the resolved distance (a number) is used. Absent the key, the distance provider is disabled and ticket verification degrades gracefully. |
+| **Load-balancer geo-IP header** | Derive the leaderboard region cohort (`adapters/region.py`, `RegionResolver` port) | Read-only HTTP request header (default `x-client-geo-country`, configurable via `GEO_COUNTRY_HEADER`); set upstream by the Google Cloud HTTPS load balancer | No GeoIP database is bundled or shipped; the raw client IP is never read or stored. Only a coarse country/region code is used, mapped to an opaque board key; unknown regions fall back to `global`. See `docs/threat-model.md` §7. |
+
+> The Maps API key and the load-balancer geo header are infrastructure inputs,
+> not committed data; they are wired via Terraform
+> (`infra/terraform/main.tf`) and the typed settings in
+> `backend/src/carbon/core/config.py`.
+
 ## Compliance notes
 
 - Attribution for OGL v3.0 and the above sources is provided in
